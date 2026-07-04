@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 import { LanguageToggle } from "@/components/layout/LanguageToggle"
 import { NotificationBadge } from "@/components/layout/NotificationBadge"
-import { logoutAction } from "@/lib/actions/auth"
+import { LogoutButton } from "@/components/auth/LogoutButton"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { cn } from "@/lib/utils"
 import type { SessionUser } from "@/types"
 
 interface HeaderClientProps {
@@ -18,7 +19,12 @@ export function HeaderClient({ session }: HeaderClientProps) {
   const { t } = useLang()
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-gold/20 bg-white/95 backdrop-blur-md shadow-sm">
+    <header
+      className={cn(
+        "no-print z-40 border-b border-gold/20 bg-white shadow-sm",
+        session ? "relative" : "fixed inset-x-0 top-0 z-50 bg-white/95 shadow-sm backdrop-blur-md"
+      )}
+    >
       <div className="rajput-border" />
       <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
@@ -33,35 +39,36 @@ export function HeaderClient({ session }: HeaderClientProps) {
           </div>
         </Link>
 
-        <nav className="hidden flex-1 justify-center md:flex">
+        <nav className={cn("hidden flex-1 justify-center md:flex", session && "lg:hidden")}>
           <ul className="flex items-center gap-1">
             <NavLink href="/">{t("nav.home")}</NavLink>
             <NavLink href="/profiles">{t("nav.matches")}</NavLink>
             {session && (
               <span className="flex items-center gap-1.5">
-                <NavLink href="/dashboard">{t("nav.dashboard")}</NavLink>
+                <NavLink href="/dashboard">{t("dash.navProfile")}</NavLink>
                 <NotificationBadge />
               </span>
             )}
           </ul>
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className={cn("hidden items-center gap-3 md:flex", session && "lg:gap-2")}>
           <LanguageToggle />
           {session ? (
             <>
-              <Link href="/dashboard" className="flex items-center gap-2 rounded-full border border-gold-light bg-cream-dark pl-1 pr-3">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-full border border-gold-light bg-cream-dark pl-1 pr-3"
+              >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-maroon text-white">
                   <User className="h-4 w-4" />
                 </div>
-                <div className="flex flex-col leading-tight">
+                <div className="hidden flex-col leading-tight sm:flex">
                   <span className="text-xs font-bold text-maroon">{session.username || "Member"}</span>
                   <span className="text-[9px] font-bold uppercase text-saffron">{session.role.replace("_", " ")}</span>
                 </div>
               </Link>
-              <form action={logoutAction}>
-                <Button type="submit" variant="outline" size="sm">{t("nav.logout")}</Button>
-              </form>
+              <LogoutButton variant="outline" size="sm" className="lg:hidden" />
             </>
           ) : (
             <>
@@ -93,7 +100,7 @@ export function HeaderClient({ session }: HeaderClientProps) {
                 {session && (
                   <MobileLink href="/dashboard">
                     <span className="flex items-center gap-2">
-                      {t("nav.dashboard")}
+                      {t("dash.navProfile")}
                       <NotificationBadge />
                     </span>
                   </MobileLink>
@@ -101,9 +108,7 @@ export function HeaderClient({ session }: HeaderClientProps) {
               </nav>
               <div className="mt-auto flex flex-col gap-3 border-t border-gold-light pt-6">
                 {session ? (
-                  <form action={logoutAction}>
-                    <Button type="submit" variant="outline" className="w-full">{t("nav.logout")}</Button>
-                  </form>
+                  <LogoutButton variant="outline" className="w-full" />
                 ) : (
                   <>
                     <SheetClose asChild>

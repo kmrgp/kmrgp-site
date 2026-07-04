@@ -83,6 +83,16 @@ export const profiles = pgTable(
     sisters: varchar("sisters", { length: 50 }),
     familyType: varchar("family_type", { length: 80 }),
     parentsOccupation: varchar("parents_occupation", { length: 255 }),
+    gender: varchar("gender", { length: 20 }),
+    currentEducation: varchar("current_education", { length: 255 }),
+    companyName: varchar("company_name", { length: 255 }),
+    fatherOccupation: varchar("father_occupation", { length: 255 }),
+    motherOccupation: varchar("mother_occupation", { length: 255 }),
+    guardianMobile: varchar("guardian_mobile", { length: 20 }),
+    whatsappNumber: varchar("whatsapp_number", { length: 20 }),
+    castCertificatePath: varchar("cast_certificate_path", { length: 500 }),
+    hobbies: text("hobbies"),
+    additionalDetails: text("additional_details"),
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })

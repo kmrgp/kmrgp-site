@@ -15,10 +15,11 @@ interface DistrictFieldProps {
   value: string
   onChange: (value: string) => void
   disabled?: boolean
+  invalid?: boolean
 }
 
-export function DistrictField({ id, value, onChange, disabled }: DistrictFieldProps) {
-  const { t } = useLang()
+export function DistrictField({ id, value, onChange, disabled, invalid }: DistrictFieldProps) {
+  const { t, tEn } = useLang()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -62,9 +63,11 @@ export function DistrictField({ id, value, onChange, disabled }: DistrictFieldPr
         }}
         onFocus={() => setOpen(true)}
         onBlur={handleBlur}
-        placeholder={t("auth.districtPlaceholder")}
+        placeholder={tEn("auth.districtPlaceholder")}
         disabled={disabled}
         autoComplete="address-level2"
+        className={invalid ? "border-destructive focus:border-destructive focus:ring-red-100" : undefined}
+        aria-invalid={invalid || undefined}
       />
       {open && !disabled && (filtered.length > 0 || showCustom) && (
         <ul
@@ -87,7 +90,7 @@ export function DistrictField({ id, value, onChange, disabled }: DistrictFieldPr
             </li>
           ))}
           {showCustom && (
-            <li role="option">
+            <li role="option" aria-selected={false}>
               <button
                 type="button"
                 className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-saffron transition-colors hover:bg-saffron-light hover:text-maroon"

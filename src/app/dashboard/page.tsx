@@ -1,8 +1,10 @@
+import { Suspense } from "react"
 import { Header } from "@/components/layout/Header"
-import { Footer } from "@/components/layout/Footer"
 import { DashboardClient, DashboardLocked } from "@/components/dashboard/DashboardClient"
+import { MemberAppShell } from "@/components/layout/MemberAppShell"
 import { getSession } from "@/lib/auth/session"
 import { getMyProfile } from "@/lib/actions/profile"
+import { getDashboardStats } from "@/lib/services/dashboardService"
 import type { Metadata } from "next"
 
 export const dynamic = "force-dynamic"
@@ -12,7 +14,6 @@ export const metadata: Metadata = {
   description:
     "Manage your bio-data, review interests, and track your matrimonial connections.",
   alternates: { canonical: "/dashboard" },
-  // Dashboard is private; keep it out of search indices.
   robots: { index: false, follow: false },
 }
 
@@ -24,19 +25,17 @@ export default async function DashboardPage() {
       <>
         <Header />
         <DashboardLocked kind="noSession" />
-        <Footer />
       </>
     )
   }
 
-  const profile = await getMyProfile()
+  const [profile, stats] = await Promise.all([getMyProfile(), getDashboardStats(session.id)])
 
   if (!profile) {
     return (
       <>
         <Header />
         <DashboardLocked kind="notFound" />
-        <Footer />
       </>
     )
   }
@@ -44,8 +43,11 @@ export default async function DashboardPage() {
   return (
     <>
       <Header />
-      <DashboardClient profile={profile} role={session.role} />
-      <Footer />
+      <Suspense fallback={<div className="min-h-screen bg-cream" />}>
+        <MemberAppShell role={session.role} pendingInterests={stats.pendingInterests}>
+          <DashboardClient profile={profile} role={session.role} stats={stats} />
+        </MemberAppShell>
+      </Suspense>
     </>
   )
 }

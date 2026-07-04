@@ -12,7 +12,7 @@ export function LangAnimatedShell({ children }: { children: ReactNode }) {
     <div
       id="app-content"
       key={`${lang}-${animKey}`}
-      className={cn("min-h-screen", animKey > 0 && "animate-content-in")}
+      className={cn("min-h-screen w-full min-w-0", animKey > 0 && "animate-content-in")}
     >
       {children}
     </div>

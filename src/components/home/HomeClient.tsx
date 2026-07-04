@@ -157,13 +157,13 @@ export function HomeClient({ featured }: HomeClientProps) {
             <p className="type-body-sm mx-auto mt-3 max-w-xl text-muted-foreground">{t("home.featuredSub")}</p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="columns-1 gap-6 md:columns-3 [column-gap:1.5rem]">
             {featured.map((profile) => (
-              <Card key={profile.userId} className="hover-lift overflow-hidden">
+              <Card key={profile.userId} className="hover-lift mb-6 inline-block w-full break-inside-avoid overflow-hidden">
                 <button
                   type="button"
                   onClick={() => openLightbox(profile.imageUrl, profile.username ?? undefined)}
-                  className={`relative block h-64 w-full ${profile.imageUrl ? "cursor-zoom-in" : "cursor-default"}`}
+                  className={`relative block w-full bg-cream-dark ${profile.imageUrl ? "cursor-zoom-in" : "cursor-default"}`}
                   aria-label={`View photo of ${profile.username}`}
                   disabled={!profile.imageUrl}
                 >
@@ -171,8 +171,7 @@ export function HomeClient({ featured }: HomeClientProps) {
                     src={profile.imageUrl}
                     name={profile.username ?? undefined}
                     alt={profile.username ?? ""}
-                    fill
-                    className="object-cover"
+                    natural
                     sizes="33vw"
                   />
                   <div className="absolute left-3 top-3 rounded-full bg-saffron px-3 py-1 text-xs font-bold text-white">{profile.type}</div>

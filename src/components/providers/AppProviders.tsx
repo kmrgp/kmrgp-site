@@ -20,6 +20,9 @@ export default function AppProviders({
       <LangAnimatedShell>{children}</LangAnimatedShell>
       <Toaster
         position="top-center"
+        offset={88}
+        duration={4000}
+        closeButton
         toastOptions={{
           style: {
             background: "#FFFDF7",

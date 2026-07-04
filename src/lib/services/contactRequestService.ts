@@ -1,20 +1,31 @@
-"use server"
-
-import { eq, and, desc } from "drizzle-orm"
+import { eq, and, desc, inArray } from "drizzle-orm"
+import { alias } from "drizzle-orm/pg-core"
 import { db } from "@/lib/db"
 import { contactRequests, users, profiles } from "@/lib/db/schema"
 import { cacheDelete, cacheDeletePattern, cacheGet, cacheSet } from "@/lib/cache"
+import { sendInterest } from "@/lib/services/interestService"
 
 const REQUEST_STATUS_KEY = (requesterId: number, ownerId: number) =>
   `contact_request:${requesterId}:${ownerId}`
 const PENDING_REQUESTS_KEY = "contact_requests:pending"
 
+export type ContactRequestStatus = "PENDING" | "APPROVED" | null
+
+export interface ContactRequestDetails {
+  status: ContactRequestStatus
+  contact: string | null
+}
+
 interface ContactRequestRow {
-  contactRequests: typeof contactRequests.$inferSelect
-  requesterUsers: typeof users.$inferSelect | null
-  requesterProfiles: typeof profiles.$inferSelect | null
-  ownerUsers: typeof users.$inferSelect | null
-  ownerProfiles: typeof profiles.$inferSelect | null
+  id: number
+  requesterId: number
+  ownerId: number
+  status: "PENDING" | "APPROVED" | "REJECTED"
+  createdAt: Date
+  requesterName: string | null
+  requesterPhone: string | null
+  ownerName: string | null
+  ownerPhone: string | null
 }
 
 export interface ContactRequestWithNames {
@@ -32,13 +43,25 @@ export interface ContactRequestWithNames {
 export async function getContactRequestStatus(
   requesterId: number,
   ownerId: number
-): Promise<"PENDING" | "APPROVED" | null> {
-  const cached = cacheGet<"PENDING" | "APPROVED" | null>(REQUEST_STATUS_KEY(requesterId, ownerId))
+): Promise<ContactRequestStatus> {
+  const details = await getContactRequestDetails(requesterId, ownerId)
+  return details.status
+}
+
+export async function getContactRequestDetails(
+  requesterId: number,
+  ownerId: number
+): Promise<ContactRequestDetails> {
+  const cached = cacheGet<ContactRequestDetails>(REQUEST_STATUS_KEY(requesterId, ownerId))
   if (cached !== undefined) return cached
 
   const [row] = await db
-    .select()
+    .select({
+      status: contactRequests.status,
+      contact: profiles.contact,
+    })
     .from(contactRequests)
+    .leftJoin(profiles, eq(contactRequests.ownerId, profiles.userId))
     .where(
       and(
         eq(contactRequests.requesterId, requesterId),
@@ -47,9 +70,44 @@ export async function getContactRequestStatus(
     )
     .limit(1)
 
-  const status = row?.status === "APPROVED" ? "APPROVED" : row?.status === "PENDING" ? "PENDING" : null
-  cacheSet(REQUEST_STATUS_KEY(requesterId, ownerId), status)
-  return status
+  const details: ContactRequestDetails =
+    row?.status === "APPROVED"
+      ? { status: "APPROVED", contact: row.contact ?? null }
+      : row?.status === "PENDING"
+        ? { status: "PENDING", contact: null }
+        : { status: null, contact: null }
+
+  cacheSet(REQUEST_STATUS_KEY(requesterId, ownerId), details)
+  return details
+}
+
+export async function getContactRequestStatuses(
+  requesterId: number,
+  ownerIds: number[]
+): Promise<Record<number, ContactRequestStatus>> {
+  const unique = [...new Set(ownerIds.filter((id) => id > 0))]
+  const result: Record<number, ContactRequestStatus> = {}
+  for (const id of unique) result[id] = null
+  if (unique.length === 0) return result
+
+  const rows = await db
+    .select({
+      ownerId: contactRequests.ownerId,
+      status: contactRequests.status,
+    })
+    .from(contactRequests)
+    .where(
+      and(
+        eq(contactRequests.requesterId, requesterId),
+        inArray(contactRequests.ownerId, unique)
+      )
+    )
+
+  for (const row of rows) {
+    result[row.ownerId] =
+      row.status === "APPROVED" ? "APPROVED" : row.status === "PENDING" ? "PENDING" : null
+  }
+  return result
 }
 
 export async function createContactRequest(
@@ -76,6 +134,7 @@ export async function createContactRequest(
   }
 
   await db.insert(contactRequests).values({ requesterId, ownerId })
+  await sendInterest(requesterId, ownerId)
   cacheDelete(REQUEST_STATUS_KEY(requesterId, ownerId))
   cacheDelete(PENDING_REQUESTS_KEY)
   cacheDeletePattern("contact_requests:")
@@ -86,41 +145,38 @@ export async function listPendingContactRequests(): Promise<ContactRequestWithNa
   const cached = cacheGet<ContactRequestWithNames[]>(PENDING_REQUESTS_KEY)
   if (cached) return cached
 
-  const rows = (await db
-    .select()
-    .from(contactRequests)
-    .leftJoin(users, eq(contactRequests.requesterId, users.id))
-    .leftJoin(
-      profiles,
-      eq(contactRequests.requesterId, profiles.userId)
-    )
-    .where(eq(contactRequests.status, "PENDING"))
-    .orderBy(desc(contactRequests.createdAt))) as unknown as ContactRequestRow[]
+  const requesterUsers = alias(users, "requester_users")
+  const ownerUsers = alias(users, "owner_users")
 
-  const result: ContactRequestWithNames[] = await Promise.all(
-    rows.map(async (row) => {
-      const owner = await db
-        .select({
-          username: users.username,
-          phone: users.phone,
-        })
-        .from(users)
-        .where(eq(users.id, row.contactRequests.ownerId))
-        .limit(1)
-
-      return {
-        id: row.contactRequests.id,
-        requesterId: row.contactRequests.requesterId,
-        requesterName: row.requesterUsers?.username ?? null,
-        requesterPhone: row.requesterUsers?.phone ?? null,
-        ownerId: row.contactRequests.ownerId,
-        ownerName: owner[0]?.username ?? null,
-        ownerPhone: owner[0]?.phone ?? null,
-        status: row.contactRequests.status,
-        createdAt: row.contactRequests.createdAt,
-      }
+  const rows: ContactRequestRow[] = await db
+    .select({
+      id: contactRequests.id,
+      requesterId: contactRequests.requesterId,
+      ownerId: contactRequests.ownerId,
+      status: contactRequests.status,
+      createdAt: contactRequests.createdAt,
+      requesterName: requesterUsers.username,
+      requesterPhone: requesterUsers.phone,
+      ownerName: ownerUsers.username,
+      ownerPhone: ownerUsers.phone,
     })
-  )
+    .from(contactRequests)
+    .leftJoin(requesterUsers, eq(contactRequests.requesterId, requesterUsers.id))
+    .leftJoin(ownerUsers, eq(contactRequests.ownerId, ownerUsers.id))
+    .where(eq(contactRequests.status, "PENDING"))
+    .orderBy(desc(contactRequests.createdAt))
+
+  const result: ContactRequestWithNames[] = rows.map((row) => ({
+    id: row.id,
+    requesterId: row.requesterId,
+    requesterName: row.requesterName,
+    requesterPhone: row.requesterPhone,
+    ownerId: row.ownerId,
+    ownerName: row.ownerName,
+    ownerPhone: row.ownerPhone,
+    status: row.status,
+    createdAt: row.createdAt,
+  }))
 
   cacheSet(PENDING_REQUESTS_KEY, result, 1000 * 60 * 2)
   return result

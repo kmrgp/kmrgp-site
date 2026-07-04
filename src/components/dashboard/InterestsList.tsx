@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
-import { Heart, CheckCircle2, X, HeartOff, Phone, Mail, Send } from "lucide-react"
+import { Heart, CheckCircle2, X, HeartOff, Phone, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { SafeImage } from "@/components/ui/safe-image"
+import { ContactAdminDialog } from "@/components/profiles/ContactAdminDialog"
 import {
   getMyInterestsAction,
   getMySentInterestsAction,
@@ -14,7 +15,9 @@ import {
   acceptInterestAction,
   declineInterestAction,
 } from "@/lib/actions/interest"
+import { getContactStatusesAction, getAdminContactPhoneAction, requestContactAction, getContactStatusAction } from "@/lib/actions/contactRequest"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
 
 interface InterestItem {
   id: number
@@ -39,26 +42,67 @@ export function InterestsList() {
   const [acceptedReceived, setAcceptedReceived] = useState<InterestItem[]>([])
   const [acceptedSent, setAcceptedSent] = useState<InterestItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [adminPhone, setAdminPhone] = useState<string | null>(null)
+  const [contactStatuses, setContactStatuses] = useState<Record<number, ContactRequestStatus>>({})
+  const [approvedContacts, setApprovedContacts] = useState<Record<number, string | null>>({})
+  const [contactDialog, setContactDialog] = useState<{
+    open: boolean
+    name: string | null
+    status: ContactRequestStatus
+    approvedContact: string | null
+  }>({ open: false, name: null, status: null, approvedContact: null })
 
-  async function load() {
+  const loadContactMeta = useCallback(async (items: InterestItem[]) => {
+    const uniqueOther = [...new Set(items.flatMap((i) => [i.senderId, i.receiverId]))]
+    if (uniqueOther.length === 0) return
+
+    const res = await getContactStatusesAction(uniqueOther)
+    if (!res.success) return
+
+    setContactStatuses((prev) => ({ ...prev, ...res.statuses }))
+
+    const approvedIds = uniqueOther.filter((id) => res.statuses[id] === "APPROVED")
+    if (approvedIds.length === 0) return
+
+    const contacts: Record<number, string | null> = {}
+    await Promise.all(
+      approvedIds.map(async (id) => {
+        const details = await getContactStatusAction(id)
+        if (details.success && details.contact) contacts[id] = details.contact
+      })
+    )
+    setApprovedContacts((prev) => ({ ...prev, ...contacts }))
+  }, [])
+
+  const load = useCallback(async () => {
     setLoading(true)
-    const [rRes, sRes, aRes] = await Promise.all([
+    const [rRes, sRes, aRes, adminRes] = await Promise.all([
       getMyInterestsAction(),
       getMySentInterestsAction(),
       getMyAcceptedInterestsAction(),
+      getAdminContactPhoneAction(),
     ])
     setLoading(false)
-    if (rRes.success) setReceived(rRes.interests as InterestItem[])
-    if (sRes.success) setSent(sRes.interests as InterestItem[])
+    if (adminRes.success) setAdminPhone(adminRes.phone)
+
+    const receivedItems = rRes.success ? (rRes.interests as InterestItem[]) : []
+    const sentItems = sRes.success ? (sRes.interests as InterestItem[]) : []
+    const acceptedR = aRes.success ? (aRes.received as InterestItem[]) : []
+    const acceptedS = aRes.success ? (aRes.sent as InterestItem[]) : []
+
+    if (rRes.success) setReceived(receivedItems)
+    if (sRes.success) setSent(sentItems)
     if (aRes.success) {
-      setAcceptedReceived(aRes.received as InterestItem[])
-      setAcceptedSent(aRes.sent as InterestItem[])
+      setAcceptedReceived(acceptedR)
+      setAcceptedSent(acceptedS)
     }
-  }
+
+    await loadContactMeta([...receivedItems, ...sentItems, ...acceptedR, ...acceptedS])
+  }, [loadContactMeta])
 
   useEffect(() => {
     load()
-  }, [])
+  }, [load])
 
   async function accept(id: number) {
     const res = await acceptInterestAction(id)
@@ -80,115 +124,173 @@ export function InterestsList() {
     load()
   }
 
+  async function requestContactFor(ownerId: number, name: string | null) {
+    const existing = contactStatuses[ownerId]
+    if (existing === "PENDING") {
+      setContactDialog({ open: true, name, status: "PENDING", approvedContact: null })
+      return
+    }
+    if (existing === "APPROVED") {
+      setContactDialog({ open: true, name, status: "APPROVED", approvedContact: approvedContacts[ownerId] ?? null })
+      return
+    }
+
+    const res = await requestContactAction(ownerId)
+    if (!res.success) {
+      toast.error(res.error)
+      return
+    }
+    setContactStatuses((prev) => ({ ...prev, [ownerId]: "PENDING" }))
+    toast.success(t("profiles.contactRequested", { name: name ?? "" }))
+    setContactDialog({ open: true, name, status: "PENDING", approvedContact: null })
+  }
+
   if (loading) return <div className="text-center text-muted-foreground">{t("int.loading")}</div>
 
   return (
-    <Tabs defaultValue="received" className="w-full">
-      <TabsList className="mb-6 flex w-full flex-wrap justify-center gap-2">
-        <TabsTrigger value="received">{t("int.tabReceived")} ({received.length})</TabsTrigger>
-        <TabsTrigger value="sent">{t("int.tabSent")} ({sent.length})</TabsTrigger>
-        <TabsTrigger value="accepted">{t("int.tabAccepted")} ({acceptedReceived.length + acceptedSent.length})</TabsTrigger>
-      </TabsList>
+    <>
+      <Tabs defaultValue="received" className="w-full min-w-0">
+        <TabsList className="mb-4 grid h-auto min-h-11 w-full min-w-0 grid-cols-3 gap-1 p-1">
+          <TabsTrigger value="received" className="min-w-0 whitespace-normal px-1 text-center text-[10px] leading-tight sm:px-3 sm:text-sm">
+            {t("int.tabReceived")} ({received.length})
+          </TabsTrigger>
+          <TabsTrigger value="sent" className="min-w-0 whitespace-normal px-1 text-center text-[10px] leading-tight sm:px-3 sm:text-sm">
+            {t("int.tabSent")} ({sent.length})
+          </TabsTrigger>
+          <TabsTrigger value="accepted" className="min-w-0 whitespace-normal px-1 text-center text-[10px] leading-tight sm:px-3 sm:text-sm">
+            {t("int.tabAccepted")} ({acceptedReceived.length + acceptedSent.length})
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Received — pending ones need action */}
-      <TabsContent value="received">
-        {received.length === 0 ? (
-          <EmptyState icon={HeartOff} text={t("int.none")} />
-        ) : (
-          <div className="space-y-4">
-            {received.map((item) => (
-              <InterestRow
-                key={item.id}
-                item={item}
-                showContact={item.status === "ACCEPTED"}
-                actions={
-                  item.status === "PENDING" ? (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => decline(item.id)}>
-                        <X className="mr-1 h-4 w-4" /> {t("int.decline")}
-                      </Button>
-                      <Button size="sm" onClick={() => accept(item.id)}>
-                        <Heart className="mr-1 h-4 w-4" /> {t("int.accept")}
-                      </Button>
-                    </>
-                  ) : (
-                    <StatusBadge status={item.status} t={t} />
-                  )
-                }
-                t={t}
-              />
-            ))}
-          </div>
-        )}
-      </TabsContent>
+        <TabsContent value="received">
+          {received.length === 0 ? (
+            <EmptyState icon={HeartOff} text={t("int.none")} />
+          ) : (
+            <div className="space-y-4">
+              {received.map((item) => {
+                const ownerId = item.senderId
+                const approved = contactStatuses[ownerId] === "APPROVED" ? approvedContacts[ownerId] : null
+                return (
+                  <InterestRow
+                    key={item.id}
+                    item={item}
+                    approvedContact={approved}
+                    actions={
+                      item.status === "PENDING" ? (
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => requestContactFor(ownerId, item.name)}>
+                            <Phone className="mr-1 h-4 w-4" /> {t("contact.viaAdmin")}
+                          </Button>
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => decline(item.id)}>
+                            <X className="mr-1 h-4 w-4" /> {t("int.decline")}
+                          </Button>
+                          <Button size="sm" className="flex-1" onClick={() => accept(item.id)}>
+                            <Heart className="mr-1 h-4 w-4" /> {t("int.accept")}
+                          </Button>
+                        </div>
+                      ) : (
+                        <StatusBadge status={item.status} t={t} />
+                      )
+                    }
+                    t={t}
+                  />
+                )
+              })}
+            </div>
+          )}
+        </TabsContent>
 
-      {/* Sent — track outgoing */}
-      <TabsContent value="sent">
-        {sent.length === 0 ? (
-          <EmptyState icon={Send} text={t("int.sentNone")} />
-        ) : (
-          <div className="space-y-4">
-            {sent.map((item) => (
-              <InterestRow
-                key={item.id}
-                item={item}
-                showContact={item.status === "ACCEPTED"}
-                actions={<StatusBadge status={item.status} t={t} />}
-                t={t}
-              />
-            ))}
-          </div>
-        )}
-      </TabsContent>
+        <TabsContent value="sent">
+          {sent.length === 0 ? (
+            <EmptyState icon={Send} text={t("int.sentNone")} />
+          ) : (
+            <div className="space-y-4">
+              {sent.map((item) => {
+                const ownerId = item.receiverId
+                const approved = contactStatuses[ownerId] === "APPROVED" ? approvedContacts[ownerId] : null
+                return (
+                  <InterestRow
+                    key={item.id}
+                    item={item}
+                    approvedContact={approved}
+                    actions={<StatusBadge status={item.status} t={t} />}
+                    t={t}
+                  />
+                )
+              })}
+            </div>
+          )}
+        </TabsContent>
 
-      {/* Accepted — connections with contact revealed */}
-      <TabsContent value="accepted">
-        {acceptedReceived.length + acceptedSent.length === 0 ? (
-          <EmptyState icon={Heart} text={t("int.acceptedNone")} />
-        ) : (
-          <div className="space-y-6">
-            {acceptedReceived.length > 0 && (
-              <div>
-                <h4 className="mb-3 font-heading text-lg font-bold text-maroon">{t("int.tabReceived")}</h4>
-                <div className="space-y-4">
-                  {acceptedReceived.map((item) => (
-                    <InterestRow key={item.id} item={item} showContact actions={null} t={t} />
-                  ))}
+        <TabsContent value="accepted">
+          {acceptedReceived.length + acceptedSent.length === 0 ? (
+            <EmptyState icon={Heart} text={t("int.acceptedNone")} />
+          ) : (
+            <div className="space-y-6">
+              {acceptedReceived.length > 0 && (
+                <div>
+                  <h4 className="mb-3 font-heading text-lg font-bold text-maroon">{t("int.tabReceived")}</h4>
+                  <div className="space-y-4">
+                    {acceptedReceived.map((item) => (
+                      <InterestRow
+                        key={item.id}
+                        item={item}
+                        approvedContact={contactStatuses[item.senderId] === "APPROVED" ? approvedContacts[item.senderId] : null}
+                        actions={null}
+                        t={t}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            {acceptedSent.length > 0 && (
-              <div>
-                <h4 className="mb-3 font-heading text-lg font-bold text-maroon">{t("int.tabSent")}</h4>
-                <div className="space-y-4">
-                  {acceptedSent.map((item) => (
-                    <InterestRow key={item.id} item={item} showContact actions={null} t={t} />
-                  ))}
+              )}
+              {acceptedSent.length > 0 && (
+                <div>
+                  <h4 className="mb-3 font-heading text-lg font-bold text-maroon">{t("int.tabSent")}</h4>
+                  <div className="space-y-4">
+                    {acceptedSent.map((item) => (
+                      <InterestRow
+                        key={item.id}
+                        item={item}
+                        approvedContact={contactStatuses[item.receiverId] === "APPROVED" ? approvedContacts[item.receiverId] : null}
+                        actions={null}
+                        t={t}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </TabsContent>
-    </Tabs>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <ContactAdminDialog
+        open={contactDialog.open}
+        onOpenChange={(open) => setContactDialog((prev) => ({ ...prev, open }))}
+        adminPhone={adminPhone}
+        profileName={contactDialog.name}
+        status={contactDialog.status}
+        approvedContact={contactDialog.approvedContact}
+      />
+    </>
   )
 }
 
 function InterestRow({
   item,
-  showContact,
+  approvedContact,
   actions,
   t,
 }: {
   item: InterestItem
-  showContact: boolean
+  approvedContact: string | null | undefined
   actions: React.ReactNode
   t: (key: any, vars?: Record<string, string | number>) => string
 }) {
   return (
-    <Card className="flex flex-col items-center justify-between gap-4 p-4 sm:flex-row">
-      <div className="flex items-center gap-4">
-        <div className="h-14 w-14 overflow-hidden rounded-full border-2 border-gold">
+    <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-gold sm:h-14 sm:w-14">
           <SafeImage
             src={item.imageUrl}
             name={item.name ?? undefined}
@@ -198,19 +300,21 @@ function InterestRow({
             className="h-full w-full object-cover"
           />
         </div>
-        <div>
-          <div className="font-heading text-lg font-bold text-maroon">{item.name}</div>
-          <div className="text-sm text-muted-foreground">
-            {item.age ?? "-"} {t("profiles.yrs")} · {t("modal.gotraSelf")}: {item.gotraSelf} ({t("modal.gotraMother")}: {item.gotraMother}) · {t("profiles.district")}: {item.district}
+        <div className="min-w-0">
+          <div className="truncate font-heading text-base font-bold text-maroon sm:text-lg">{item.name}</div>
+          <div className="text-xs text-muted-foreground sm:text-sm">
+            {item.age ?? "-"} {t("profiles.yrs")} · {item.gotraSelf} · {item.district}
           </div>
-          {showContact && item.contact && (
-            <a href={`tel:+91${item.contact}`} className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-saffron">
-              <Phone className="h-3.5 w-3.5" /> +91 {item.contact}
+          {approvedContact ? (
+            <a href={`tel:+91${approvedContact.replace(/\D/g, "")}`} className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-saffron">
+              <Phone className="h-3.5 w-3.5" /> +91 {approvedContact}
             </a>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">{t("contact.adminHint")}</p>
           )}
         </div>
       </div>
-      {actions && <div className="flex gap-2">{actions}</div>}
+      {actions && <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">{actions}</div>}
     </Card>
   )
 }

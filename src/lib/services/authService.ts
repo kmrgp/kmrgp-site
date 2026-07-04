@@ -1,13 +1,28 @@
 import { createUser, getUserByPhone, getUserByUsername } from "./userService"
 import { createProfile, getProfileByUserId } from "./profileService"
 import { verifyPassword } from "@/lib/auth/password"
+import { isValidIndianMobile, normalizeIndianMobile } from "@/lib/validation/phone"
 import type { ProfileType, PublicProfile, Role } from "@/types"
 
+function looksLikePhoneInput(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed) return false
+  return !/[a-zA-Z]/.test(trimmed)
+}
+
 export async function authenticateUser(phoneOrUsername: string, password: string) {
-  const normalizedPhone = phoneOrUsername.replace(/\D/g, "")
-  let user = normalizedPhone ? await getUserByPhone(normalizedPhone) : undefined
+  const trimmed = phoneOrUsername.trim()
+  let user
+
+  if (looksLikePhoneInput(trimmed)) {
+    const phone = normalizeIndianMobile(trimmed)
+    if (isValidIndianMobile(phone)) {
+      user = await getUserByPhone(phone)
+    }
+  }
+
   if (!user) {
-    user = await getUserByUsername(phoneOrUsername)
+    user = await getUserByUsername(trimmed)
   }
 
   if (!user) {
@@ -67,7 +82,7 @@ export async function registerUser(data: {
     visible: false,
     approvalStatus: "SENT",
     dob: data.dob,
-    height: data.height ?? "5'10\"",
+    height: data.height || undefined,
     gotraSelf: data.gotraSelf,
     gotraMother: data.gotraMother,
     education: data.education,

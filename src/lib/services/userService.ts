@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { users, type User } from "@/lib/db/schema"
 import { cacheDelete, cacheDeletePattern, cacheGet, cacheSet } from "@/lib/cache"
 import { hashPassword } from "@/lib/auth/password"
+import { normalizeIndianMobile } from "@/lib/validation/phone"
 import type { Role } from "@/types"
 
 const USER_KEY = (id: number) => `user:${id}`
@@ -22,7 +23,7 @@ export async function getUserById(id: number): Promise<User | undefined> {
 }
 
 export async function getUserByPhone(phone: string): Promise<User | undefined> {
-  const normalized = phone.replace(/\D/g, "")
+  const normalized = normalizeIndianMobile(phone)
   const cached = cacheGet<User>(USER_PHONE_KEY(normalized))
   if (cached) return cached
 
@@ -74,6 +75,13 @@ export async function updateUserRole(id: number, role: Role): Promise<User> {
   cacheSet(USER_KEY(id), user)
   cacheSet(USER_PHONE_KEY(user.phone), user)
   cacheDeletePattern("stats:")
+  return user
+}
+
+export async function updateUserUsername(id: number, username: string): Promise<User> {
+  const [user] = await db.update(users).set({ username }).where(eq(users.id, id)).returning()
+  cacheSet(USER_KEY(id), user)
+  cacheSet(USER_PHONE_KEY(user.phone), user)
   return user
 }
 

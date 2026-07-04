@@ -8,9 +8,6 @@ type ActionResult<T> = { success: true; data: T } | { success: false; error: str
 export async function listApprovedProfilesAction(): Promise<{ success: boolean; error?: string; profiles?: any[] }> {
   const session = await getSession()
   if (!session) return { success: false, error: "Not authenticated" }
-  if (!session.isApproved && session.role === "USER") {
-    return { success: false, error: "PENDING_APPROVAL" }
-  }
 
   const profiles = await listApprovedProfiles()
   return { success: true, profiles }
@@ -19,9 +16,6 @@ export async function listApprovedProfilesAction(): Promise<{ success: boolean; 
 export async function searchProfilesAction(filters: ProfileSearchFilters): Promise<ActionResult<ProfileSearchResult>> {
   const session = await getSession()
   if (!session) return { success: false, error: "Not authenticated" }
-  if (!session.isApproved && session.role === "USER") {
-    return { success: false, error: "PENDING_APPROVAL" }
-  }
 
   const data = await searchProfiles(filters)
   return { success: true, data }

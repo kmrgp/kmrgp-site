@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { authenticateUser, registerUser } from "@/lib/services/authService"
 import { createSession, deleteSession, getSession } from "@/lib/auth/session"
 import type { ProfileType } from "@/types"
+import { isValidIndianMobile, normalizeIndianMobile } from "@/lib/validation/phone"
 
 export async function loginAction(phoneOrUsername: string, password: string) {
   const result = await authenticateUser(phoneOrUsername, password)
@@ -33,11 +34,13 @@ export async function registerAction(data: {
   if (data.password.length < 6) {
     return { success: false, error: "Password must be at least 6 characters." }
   }
-  if (data.phone.replace(/\D/g, "").length < 10) {
-    return { success: false, error: "A valid 10-digit mobile number is required." }
+
+  const phone = normalizeIndianMobile(data.phone)
+  if (!isValidIndianMobile(phone)) {
+    return { success: false, error: "A valid 10-digit Indian mobile number is required." }
   }
 
-  const result = await registerUser(data)
+  const result = await registerUser({ ...data, phone })
   if (!result.success) {
     return { success: false, error: result.error }
   }

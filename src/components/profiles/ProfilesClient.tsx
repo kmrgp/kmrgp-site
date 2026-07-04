@@ -9,15 +9,20 @@ import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { ProfileCard } from "./ProfileCard"
 import { ProfileModal } from "./ProfileModal"
-import { requestContactAction } from "@/lib/actions/contactRequest"
+import { ContactAdminDialog } from "./ContactAdminDialog"
+import { FilterSelect } from "@/components/ui/FilterSelect"
+import { SUGGESTED_DISTRICTS } from "@/lib/constants/districts"
+import { requestContactAction, getContactStatusesAction, getContactStatusAction } from "@/lib/actions/contactRequest"
 import { searchProfilesAction } from "@/lib/actions/profiles"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
 import type { PublicProfile, SessionUser } from "@/types"
 
 interface ProfilesClientProps {
   initialProfiles: PublicProfile[]
   user: SessionUser | null
   initialTotal: number
+  adminPhone: string | null
 }
 
 type SortKey = "default" | "ageAsc" | "ageDesc" | "heightAsc" | "heightDesc" | "verifiedFirst"
@@ -31,11 +36,19 @@ const HEIGHT_FILTER_OPTIONS = [
   { value: 72, label: "6'0\"" },
 ]
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 9
 
-export function ProfilesClient({ initialProfiles, user, initialTotal }: ProfilesClientProps) {
+export function ProfilesClient({ initialProfiles, user, initialTotal, adminPhone }: ProfilesClientProps) {
   const { t } = useLang()
   const [selected, setSelected] = useState<PublicProfile | null>(null)
+  const [contactStatuses, setContactStatuses] = useState<Record<number, ContactRequestStatus>>({})
+  const [approvedContacts, setApprovedContacts] = useState<Record<number, string | null>>({})
+  const [contactDialog, setContactDialog] = useState<{
+    open: boolean
+    profile: PublicProfile | null
+    status: ContactRequestStatus
+    approvedContact: string | null
+  }>({ open: false, profile: null, status: null, approvedContact: null })
 
   const [gender, setGender] = useState("all")
   const [ageMin, setAgeMin] = useState(18)
@@ -53,11 +66,37 @@ export function ProfilesClient({ initialProfiles, user, initialTotal }: Profiles
   const [results, setResults] = useState<PublicProfile[]>(initialProfiles)
   const [total, setTotal] = useState(initialTotal)
   const [loading, setLoading] = useState(false)
-  const [applied, setApplied] = useState(false) // whether a search has been applied
+  const [applied, setApplied] = useState(false)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const displayTotal = applied ? total : initialTotal
+  const rangeStart = displayTotal === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(page * PAGE_SIZE, displayTotal)
 
-  // Build the filter object from current UI state.
+  const loadContactStatuses = useCallback(async (profiles: PublicProfile[]) => {
+    if (!user || profiles.length === 0) return
+    const ownerIds = profiles.map((p) => p.userId)
+    const res = await getContactStatusesAction(ownerIds)
+    if (res.success) {
+      setContactStatuses((prev) => ({ ...prev, ...res.statuses }))
+      const approvedIds = ownerIds.filter((id) => res.statuses[id] === "APPROVED")
+      if (approvedIds.length > 0) {
+        const contacts: Record<number, string | null> = {}
+        await Promise.all(
+          approvedIds.map(async (id) => {
+            const details = await getContactStatusAction(id)
+            if (details.success && details.contact) contacts[id] = details.contact
+          })
+        )
+        setApprovedContacts((prev) => ({ ...prev, ...contacts }))
+      }
+    }
+  }, [user])
+
+  useEffect(() => {
+    loadContactStatuses(initialProfiles)
+  }, [initialProfiles, loadContactStatuses])
+
   const buildFilters = useCallback(
     (forPage: number) => ({
       gender: gender as "groom" | "bride" | "all",
@@ -77,7 +116,6 @@ export function ProfilesClient({ initialProfiles, user, initialTotal }: Profiles
     [gender, ageMin, ageMax, community, district, gotraQuery, gotraExclude, keyword, verifiedOnly, heightMin, sort]
   )
 
-  // Fetch a page from the server.
   const runSearch = useCallback(
     async (forPage: number) => {
       setLoading(true)
@@ -89,21 +127,21 @@ export function ProfilesClient({ initialProfiles, user, initialTotal }: Profiles
       }
       setResults(res.data.profiles)
       setTotal(res.data.total)
+      await loadContactStatuses(res.data.profiles)
     },
-    [buildFilters]
+    [buildFilters, loadContactStatuses]
   )
 
-  // When the user clicks "Apply", reset to page 1 and fetch.
   function applySearch() {
     setApplied(true)
     setPage(1)
     runSearch(1)
   }
 
-  // Pagination: fetch the requested page.
   function gotoPage(p: number) {
     const clamped = Math.min(Math.max(1, p), totalPages)
     setPage(clamped)
+    setApplied(true)
     runSearch(clamped)
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -124,101 +162,155 @@ export function ProfilesClient({ initialProfiles, user, initialTotal }: Profiles
     setPage(1)
     setResults(initialProfiles)
     setTotal(initialTotal)
+    loadContactStatuses(initialProfiles)
   }
 
-  async function handleRequestContact(profile: PublicProfile) {
+  function openContactDialog(profile: PublicProfile, status: ContactRequestStatus, approvedContact: string | null = null) {
+    setContactDialog({ open: true, profile, status, approvedContact })
+  }
+
+  async function handleContact(profile: PublicProfile) {
     if (!user) {
       toast.info(t("profiles.loginToSend"))
       return
     }
+
+    const existing = contactStatuses[profile.userId]
+    if (existing === "PENDING") {
+      openContactDialog(profile, "PENDING")
+      return
+    }
+    if (existing === "APPROVED") {
+      let contact = approvedContacts[profile.userId] ?? null
+      if (!contact) {
+        const details = await getContactStatusAction(profile.userId)
+        if (details.success && details.contact) {
+          contact = details.contact
+          setApprovedContacts((prev) => ({ ...prev, [profile.userId]: contact }))
+        }
+      }
+      openContactDialog(profile, "APPROVED", contact)
+      return
+    }
+
     const res = await requestContactAction(profile.userId)
     if (!res.success) {
       toast.error(res.error)
       return
     }
+
+    setContactStatuses((prev) => ({ ...prev, [profile.userId]: "PENDING" }))
     if (res.alreadyRequested) {
       toast.info(t("profiles.contactAlreadyRequested"))
-      return
+    } else {
+      toast.success(t("profiles.contactRequested", { name: profile.username ?? "" }))
     }
-    toast.success(t("profiles.contactRequested", { name: profile.username ?? "" }))
+    openContactDialog(profile, "PENDING")
+  }
+
+  function handleContactStatusChange(userId: number, status: ContactRequestStatus, contact: string | null) {
+    setContactStatuses((prev) => ({ ...prev, [userId]: status }))
+    if (contact) setApprovedContacts((prev) => ({ ...prev, [userId]: contact }))
   }
 
   return (
     <>
-      <section className="bg-cream py-10 pt-[120px]">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mb-8 text-center">
-            <h1 className="font-heading text-3xl font-bold text-maroon">{t("profiles.title")}</h1>
-            <p className="mt-2 text-muted-foreground">{t("profiles.subtitle")}</p>
+      <section className="w-full min-w-0 bg-cream py-4 sm:py-6">
+        <div className="mx-auto w-full min-w-0 max-w-6xl px-4 sm:px-6 lg:max-w-none lg:px-8">
+          <div className="mb-5 sm:mb-6">
+            <h1 className="font-heading text-2xl font-bold text-maroon sm:text-3xl">{t("profiles.results")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("profiles.subtitle")}</p>
           </div>
 
           {user && (
-            <div className="mb-6 flex items-center justify-center gap-2 rounded-full border border-gold bg-white px-4 py-2 text-sm font-bold text-gold">
-              <Unlock className="h-4 w-4" />
-              {t("profiles.verifiedAccess")}
+            <div className="mb-5 flex flex-col gap-2 sm:mb-6">
+              {!user.isApproved && user.role === "USER" && (
+                <div className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-900 sm:text-sm">
+                  <Unlock className="h-4 w-4 shrink-0" />
+                  {t("profiles.accountPending")}
+                </div>
+              )}
+              <div className="flex items-center gap-2 rounded-xl border border-gold bg-white px-3 py-2.5 text-xs font-semibold text-maroon sm:text-sm">
+                <Unlock className="h-4 w-4 shrink-0 text-gold" />
+                {t("profiles.contactViaAdmin")}
+              </div>
             </div>
           )}
 
-          <Card className="mb-8 p-6">
+          <Card className="mb-5 min-w-0 overflow-hidden p-4 sm:mb-6 sm:p-6">
             <div className="mb-4 flex items-center gap-2">
-              <SlidersHorizontal className="h-5 w-5 text-maroon" />
-              <h2 className="font-heading text-xl font-bold text-maroon">{t("profiles.filterTitle")}</h2>
+              <SlidersHorizontal className="h-5 w-5 shrink-0 text-maroon" />
+              <h2 className="font-heading text-lg font-bold text-maroon sm:text-xl">{t("profiles.filterTitle")}</h2>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <FilterGroup label={t("profiles.lookingFor")}>
-                <select className="input-style" value={gender} onChange={(e) => setGender(e.target.value)}>
-                  <option value="all">{t("profiles.all")}</option>
-                  <option value="groom">{t("profiles.groom")}</option>
-                  <option value="bride">{t("profiles.bride")}</option>
-                </select>
+                <FilterSelect
+                  value={gender}
+                  onValueChange={setGender}
+                  options={[
+                    { value: "all", label: t("profiles.all") },
+                    { value: "groom", label: t("profiles.groom") },
+                    { value: "bride", label: t("profiles.bride") },
+                  ]}
+                />
               </FilterGroup>
 
               <FilterGroup label={t("profiles.ageRange")}>
-                <div className="flex items-center gap-2">
-                  <Input type="number" value={ageMin} onChange={(e) => setAgeMin(Number(e.target.value))} className="min-h-10" />
-                  <span className="text-gold">-</span>
-                  <Input type="number" value={ageMax} onChange={(e) => setAgeMax(Number(e.target.value))} className="min-h-10" />
+                <div className="flex min-w-0 items-center gap-2">
+                  <Input type="number" value={ageMin} onChange={(e) => setAgeMin(Number(e.target.value))} className="min-h-10 min-w-0" />
+                  <span className="shrink-0 text-gold">-</span>
+                  <Input type="number" value={ageMax} onChange={(e) => setAgeMax(Number(e.target.value))} className="min-h-10 min-w-0" />
                 </div>
               </FilterGroup>
 
               <FilterGroup label={t("profiles.heightMin")}>
-                <select className="input-style" value={heightMin} onChange={(e) => setHeightMin(Number(e.target.value))}>
-                  {HEIGHT_FILTER_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.labelKey ? t(o.labelKey) : o.label}
-                    </option>
-                  ))}
-                </select>
+                <FilterSelect
+                  value={String(heightMin)}
+                  onValueChange={(v) => setHeightMin(Number(v))}
+                  options={HEIGHT_FILTER_OPTIONS.map((o) => ({
+                    value: String(o.value),
+                    label: o.labelKey ? t(o.labelKey) : o.label!,
+                  }))}
+                />
               </FilterGroup>
 
               <FilterGroup label={t("profiles.sortBy")}>
-                <select className="input-style" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-                  <option value="default">{t("profiles.sort.default")}</option>
-                  <option value="ageAsc">{t("profiles.sort.ageAsc")}</option>
-                  <option value="ageDesc">{t("profiles.sort.ageDesc")}</option>
-                  <option value="heightAsc">{t("profiles.sort.heightAsc")}</option>
-                  <option value="heightDesc">{t("profiles.sort.heightDesc")}</option>
-                  <option value="verifiedFirst">{t("profiles.sort.verifiedFirst")}</option>
-                </select>
+                <FilterSelect
+                  value={sort}
+                  onValueChange={(v) => setSort(v as SortKey)}
+                  options={[
+                    { value: "default", label: t("profiles.sort.default") },
+                    { value: "ageAsc", label: t("profiles.sort.ageAsc") },
+                    { value: "ageDesc", label: t("profiles.sort.ageDesc") },
+                    { value: "heightAsc", label: t("profiles.sort.heightAsc") },
+                    { value: "heightDesc", label: t("profiles.sort.heightDesc") },
+                    { value: "verifiedFirst", label: t("profiles.sort.verifiedFirst") },
+                  ]}
+                />
               </FilterGroup>
 
               <FilterGroup label={t("profiles.community")}>
-                <select className="input-style" value={community} onChange={(e) => setCommunity(e.target.value)}>
-                  <option value="all">{t("profiles.allCommunities")}</option>
-                  <option>Mewada</option>
-                  <option>Rajput</option>
-                </select>
+                <FilterSelect
+                  value={community}
+                  onValueChange={setCommunity}
+                  options={[
+                    { value: "all", label: t("profiles.allCommunities") },
+                    { value: "Mewada", label: "Mewada" },
+                    { value: "Rajput", label: "Rajput" },
+                  ]}
+                />
               </FilterGroup>
 
               <FilterGroup label={t("profiles.district")}>
-                <select className="input-style" value={district} onChange={(e) => setDistrict(e.target.value)}>
-                  <option value="all">{t("profiles.allDistricts")}</option>
-                  <option>Bhopal</option>
-                  <option>Sehore</option>
-                  <option>Rajgarh</option>
-                  <option>Indore</option>
-                </select>
+                <FilterSelect
+                  value={district}
+                  onValueChange={setDistrict}
+                  options={[
+                    { value: "all", label: t("profiles.allDistricts") },
+                    ...SUGGESTED_DISTRICTS.map((d) => ({ value: d, label: d })),
+                  ]}
+                />
               </FilterGroup>
 
               <FilterGroup label={t("profiles.searchGotra")}>
@@ -233,30 +325,31 @@ export function ProfilesClient({ initialProfiles, user, initialTotal }: Profiles
                 <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder={t("profiles.keyword")} />
               </FilterGroup>
 
-              <div className="flex items-end gap-3">
+              <div className="flex min-w-0 items-end">
                 <label className="flex cursor-pointer items-center gap-2">
-                  <input type="checkbox" checked={verifiedOnly} onChange={(e) => setVerifiedOnly(e.target.checked)} className="h-5 w-5 accent-maroon" />
-                  <span className="font-semibold text-maroon">{t("profiles.verifiedOnly")}</span>
+                  <input type="checkbox" checked={verifiedOnly} onChange={(e) => setVerifiedOnly(e.target.checked)} className="h-5 w-5 shrink-0 accent-maroon" />
+                  <span className="text-sm font-semibold text-maroon">{t("profiles.verifiedOnly")}</span>
                 </label>
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
-              <Button variant="outline" onClick={resetFilters}>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:gap-3">
+              <Button variant="outline" className="w-full sm:w-auto" onClick={resetFilters}>
                 <RotateCcw className="mr-2 h-4 w-4" /> {t("profiles.reset")}
               </Button>
-              <Button onClick={applySearch} disabled={loading}>
+              <Button className="w-full sm:w-auto" onClick={applySearch} disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                 {t("profiles.apply")}
               </Button>
             </div>
           </Card>
 
-          <div className="mb-4 flex items-center justify-between border-b-2 border-gold-light pb-3">
-            <h3 className="font-heading text-2xl font-bold text-maroon">{t("profiles.results")}</h3>
-            <span className="text-sm font-semibold text-muted-foreground">
-              {applied ? `${total} ${t("profiles.matchesFound")}` : `${initialTotal} ${t("profiles.matchesFound")}`}
-            </span>
+          <div className="mb-4 flex min-w-0 flex-col gap-1 border-b-2 border-gold-light pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-semibold text-muted-foreground">
+              {displayTotal > 0
+                ? t("profiles.showingRange", { start: rangeStart, end: rangeEnd, total: displayTotal })
+                : `0 ${t("profiles.matchesFound")}`}
+            </p>
           </div>
 
           {loading ? (
@@ -270,29 +363,52 @@ export function ProfilesClient({ initialProfiles, user, initialTotal }: Profiles
             </div>
           ) : (
             <>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="columns-1 min-[480px]:columns-2 lg:columns-3 [column-gap:1.5rem]">
                 {results.map((profile) => (
                   <ProfileCard
                     key={profile.userId}
                     profile={profile}
                     isLoggedIn={!!user}
+                    contactStatus={contactStatuses[profile.userId] ?? null}
                     onView={() => setSelected(profile)}
-                    onRequestContact={() => handleRequestContact(profile)}
+                    onContact={() => handleContact(profile)}
                   />
                 ))}
               </div>
 
               {totalPages > 1 && (
-                <div className="mt-10 flex items-center justify-center gap-4">
-                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => gotoPage(page - 1)}>
-                    <ChevronLeft className="mr-1 h-4 w-4" /> {t("profiles.prev")}
-                  </Button>
-                  <span className="font-heading font-bold text-maroon">
-                    {page} / {totalPages}
-                  </span>
-                  <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => gotoPage(page + 1)}>
-                    {t("profiles.next")} <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
+                <div className="mt-8 flex flex-col items-center gap-3 sm:mt-10">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => gotoPage(page - 1)}>
+                      <ChevronLeft className="mr-1 h-4 w-4" /> {t("profiles.prev")}
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                      .map((p, idx, arr) => {
+                        const prev = arr[idx - 1]
+                        const showEllipsis = prev != null && p - prev > 1
+                        return (
+                          <span key={p} className="flex items-center gap-2">
+                            {showEllipsis && <span className="px-1 text-muted-foreground">…</span>}
+                            <Button
+                              variant={p === page ? "default" : "outline"}
+                              size="sm"
+                              className="min-w-9"
+                              disabled={loading}
+                              onClick={() => gotoPage(p)}
+                            >
+                              {p}
+                            </Button>
+                          </span>
+                        )
+                      })}
+                    <Button variant="outline" size="sm" disabled={page >= totalPages || loading} onClick={() => gotoPage(page + 1)}>
+                      {t("profiles.next")} <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t("profiles.pageOf", { page, total: totalPages })}
+                  </p>
                 </div>
               )}
             </>
@@ -305,6 +421,20 @@ export function ProfilesClient({ initialProfiles, user, initialTotal }: Profiles
         open={!!selected}
         onOpenChange={(open) => !open && setSelected(null)}
         isLoggedIn={!!user}
+        adminPhone={adminPhone}
+        contactStatus={selected ? contactStatuses[selected.userId] ?? null : null}
+        approvedContact={selected ? approvedContacts[selected.userId] ?? null : null}
+        onContactStatusChange={handleContactStatusChange}
+        onOpenContactDialog={(profile, status, contact) => openContactDialog(profile, status, contact)}
+      />
+
+      <ContactAdminDialog
+        open={contactDialog.open}
+        onOpenChange={(open) => setContactDialog((prev) => ({ ...prev, open }))}
+        adminPhone={adminPhone}
+        profileName={contactDialog.profile?.username}
+        status={contactDialog.status}
+        approvedContact={contactDialog.approvedContact}
       />
     </>
   )
@@ -312,7 +442,7 @@ export function ProfilesClient({ initialProfiles, user, initialTotal }: Profiles
 
 function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <Label className="text-sm">{label}</Label>
       {children}
     </div>

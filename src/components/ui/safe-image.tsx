@@ -8,7 +8,8 @@ interface SafeImageProps extends Omit<ImageProps, "src" | "onError"> {
   src: string | null | undefined
   /** Name used to seed the generated fallback avatar. */
   name?: string
-  /** Extra classes for the fallback wrapper. */
+  /** Render at intrinsic aspect ratio (full image, no crop). */
+  natural?: boolean
 }
 
 function fallbackUrl(name?: string): string {
@@ -28,7 +29,7 @@ function fallbackUrl(name?: string): string {
  * avatar when the source is missing or fails to load. Centralizes the dignity
  * guarantee: no broken-image icons ever reach the user.
  */
-export function SafeImage({ src, name, alt, className, fill, ...rest }: SafeImageProps) {
+export function SafeImage({ src, name, alt, className, fill, natural, ...rest }: SafeImageProps) {
   const [errored, setErrored] = useState(false)
   const [current, setCurrent] = useState<string | null>(src ?? null)
 
@@ -38,6 +39,21 @@ export function SafeImage({ src, name, alt, className, fill, ...rest }: SafeImag
   }, [src])
 
   const effective = errored || !current ? fallbackUrl(name) : current
+
+  if (natural) {
+    return (
+      // Native img preserves each photo's true height (Pinterest-style masonry tiles).
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={effective}
+        alt={alt ?? name ?? "profile photo"}
+        className={cn("block w-full h-auto", className)}
+        onError={() => setErrored(true)}
+        loading="lazy"
+        decoding="async"
+      />
+    )
+  }
 
   if (fill) {
     return (

@@ -47,6 +47,8 @@
   body {
     @apply bg-cream font-sans text-body text-foreground antialiased;
     font-feature-settings: "kern" 1, "liga" 1;
+    width: 100%;
+    max-width: 100%;
   }
   h1 {
     @apply font-heading text-h1-lg text-maroon;
@@ -204,7 +206,7 @@
 
 @layer components {
   .input-style {
-    @apply flex min-h-[52px] w-full rounded-2xl border-2 border-gold-hover bg-white px-4 py-3 text-base transition-colors focus:border-saffron focus:outline-none focus:ring-4 focus:ring-saffron-light;
+    @apply flex min-h-[52px] w-full min-w-0 max-w-full rounded-2xl border-2 border-gold-hover bg-white px-4 py-3 text-base transition-colors focus:border-saffron focus:outline-none focus:ring-4 focus:ring-saffron-light;
   }
 
   /* Themed scrollbars — page, modals, tables, selects */
@@ -258,4 +260,52 @@
 
 body[data-scroll-locked] {
   overflow: hidden !important;
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+    size: A4;
+  }
+
+  html,
+  body {
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .no-print,
+  header,
+  nav,
+  aside,
+  footer,
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #biodata-card,
+  #biodata-card * {
+    visibility: visible;
+  }
+
+  #biodata-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 12px double #800020 !important;
+    background-color: #fffdf7 !important;
+    padding: 32px !important;
+    page-break-inside: avoid;
+  }
 }

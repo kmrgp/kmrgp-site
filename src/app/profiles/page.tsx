@@ -1,12 +1,13 @@
+import { Suspense } from "react"
 import { Header } from "@/components/layout/Header"
-import { Footer } from "@/components/layout/Footer"
-import { Button } from "@/components/ui/button"
-import { Home, ShieldAlert } from "lucide-react"
 import { getSession } from "@/lib/auth/session"
 import { searchProfiles } from "@/lib/services/profileService"
+import { getDashboardStats } from "@/lib/services/dashboardService"
+import { getAdminContactPhone } from "@/lib/services/adminContactService"
 import { ProfilesClient } from "@/components/profiles/ProfilesClient"
 import { ProfileAccessLocked } from "@/components/profiles/ProfileAccessLocked"
-import Link from "next/link"
+import { MemberAppShell } from "@/components/layout/MemberAppShell"
+import { Footer } from "@/components/layout/Footer"
 import type { Metadata } from "next"
 
 export const dynamic = "force-dynamic"
@@ -31,19 +32,25 @@ export default async function ProfilesPage() {
     )
   }
 
-  // Any logged-in user (even pending/unapproved) can explore profiles.
-  // Contact details remain gated behind admin-approved contact requests.
-  const firstPage = await searchProfiles({ page: 1, pageSize: 12 })
+  const [firstPage, stats, adminPhone] = await Promise.all([
+    searchProfiles({ page: 1, pageSize: 9 }),
+    getDashboardStats(session.id),
+    getAdminContactPhone(),
+  ])
 
   return (
     <>
       <Header />
-      <ProfilesClient
-        initialProfiles={firstPage.profiles}
-        initialTotal={firstPage.total}
-        user={session}
-      />
-      <Footer />
+      <Suspense fallback={<div className="min-h-screen bg-cream" />}>
+        <MemberAppShell role={session.role} pendingInterests={stats.pendingInterests}>
+          <ProfilesClient
+            initialProfiles={firstPage.profiles}
+            initialTotal={firstPage.total}
+            user={session}
+            adminPhone={adminPhone}
+          />
+        </MemberAppShell>
+      </Suspense>
     </>
   )
 }

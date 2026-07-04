@@ -33,6 +33,16 @@ export interface PublicProfile {
   sisters: string | null
   familyType: string | null
   parentsOccupation: string | null
+  gender: string | null
+  currentEducation: string | null
+  companyName: string | null
+  fatherOccupation: string | null
+  motherOccupation: string | null
+  guardianMobile: string | null
+  whatsappNumber: string | null
+  castCertificateUrl: string | null
+  hobbies: string | null
+  additionalDetails: string | null
   age?: number
 }
 

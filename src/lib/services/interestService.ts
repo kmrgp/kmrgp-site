@@ -1,4 +1,4 @@
-import { eq, and, count } from "drizzle-orm"
+import { eq, and, or, count } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { interests, users, profiles, type Interest, type User, type Profile } from "@/lib/db/schema"
 import { cacheDeletePattern, cacheGet, cacheSet } from "@/lib/cache"
@@ -71,7 +71,7 @@ function toInterestWithProfile(row: InterestRow, asSender: boolean): InterestWit
     gotraSelf: otherProfile?.gotraSelf ?? null,
     gotraMother: otherProfile?.gotraMother ?? null,
     district: otherProfile?.district ?? null,
-    contact: otherProfile?.contact ?? null,
+    contact: null,
     status: row.interests.status,
     createdAt: row.interests.createdAt,
   }
@@ -117,7 +117,7 @@ export async function getSentInterests(senderId: number): Promise<InterestWithPr
     gotraSelf: row.profiles?.gotraSelf ?? null,
     gotraMother: row.profiles?.gotraMother ?? null,
     district: row.profiles?.district ?? null,
-    contact: row.profiles?.contact ?? null,
+    contact: null,
     status: row.interests.status,
     createdAt: row.interests.createdAt,
   }))
@@ -163,7 +163,7 @@ export async function getAcceptedInterestsSent(senderId: number): Promise<Intere
     gotraSelf: row.profiles?.gotraSelf ?? null,
     gotraMother: row.profiles?.gotraMother ?? null,
     district: row.profiles?.district ?? null,
-    contact: row.profiles?.contact ?? null,
+    contact: null,
     status: row.interests.status,
     createdAt: row.interests.createdAt,
   }))
@@ -189,6 +189,19 @@ export async function countAcceptedInterestsReceived(receiverId: number): Promis
     .select({ count: count() })
     .from(interests)
     .where(and(eq(interests.receiverId, receiverId), eq(interests.status, "ACCEPTED")))
+  return Number(rows[0].count)
+}
+
+export async function countAcceptedMatches(userId: number): Promise<number> {
+  const rows = await db
+    .select({ count: count() })
+    .from(interests)
+    .where(
+      and(
+        eq(interests.status, "ACCEPTED"),
+        or(eq(interests.receiverId, userId), eq(interests.senderId, userId))
+      )
+    )
   return Number(rows[0].count)
 }
 

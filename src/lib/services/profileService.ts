@@ -11,7 +11,18 @@ const PENDING_PROFILES_KEY = "profiles:pending"
 const REJECTED_PROFILES_KEY = "profiles:rejected"
 const ALL_PROFILES_KEY = "profiles:all"
 
+export function stripPrivateContact(profile: PublicProfile): PublicProfile {
+  return { ...profile, contact: null, phone: null }
+}
+
 export function toPublicProfile(user: User | null, profile: Profile): PublicProfile {
+  const fileUrl = (path: string | null) =>
+    path
+      ? path.startsWith("http")
+        ? path
+        : `/api/profile/image/${path}`
+      : null
+
   return {
     userId: profile.userId,
     username: user?.username ?? null,
@@ -22,13 +33,7 @@ export function toPublicProfile(user: User | null, profile: Profile): PublicProf
     isSeed: profile.isSeed,
     featured: profile.featured,
     approvalStatus: profile.approvalStatus as ApprovalStatus,
-    // Full URLs (R2 CDN) are used as-is; bare filenames fall back to the
-    // local image API route (used by seed data and legacy local uploads).
-    imageUrl: profile.imagePath
-      ? profile.imagePath.startsWith("http")
-        ? profile.imagePath
-        : `/api/profile/image/${profile.imagePath}`
-      : null,
+    imageUrl: fileUrl(profile.imagePath),
     dob: profile.dob,
     height: profile.height,
     gotraSelf: profile.gotraSelf,
@@ -45,6 +50,16 @@ export function toPublicProfile(user: User | null, profile: Profile): PublicProf
     sisters: profile.sisters,
     familyType: profile.familyType,
     parentsOccupation: profile.parentsOccupation,
+    gender: profile.gender,
+    currentEducation: profile.currentEducation,
+    companyName: profile.companyName,
+    fatherOccupation: profile.fatherOccupation ?? profile.parentsOccupation,
+    motherOccupation: profile.motherOccupation,
+    guardianMobile: profile.guardianMobile,
+    whatsappNumber: profile.whatsappNumber,
+    castCertificateUrl: fileUrl(profile.castCertificatePath),
+    hobbies: profile.hobbies,
+    additionalDetails: profile.additionalDetails,
   }
 }
 
@@ -221,10 +236,12 @@ export async function searchProfiles(filters: ProfileSearchFilters): Promise<Pro
     .limit(pageSize)
     .offset(offset)
 
-  const result: PublicProfile[] = rows.map(({ users: userRow, profiles: profile }) => ({
-    ...toPublicProfile(userRow, profile),
-    age: estimateAge(profile.dob),
-  }))
+  const result: PublicProfile[] = rows.map(({ users: userRow, profiles: profile }) =>
+    stripPrivateContact({
+      ...toPublicProfile(userRow, profile),
+      age: estimateAge(profile.dob),
+    })
+  )
 
   return {
     profiles: result,
@@ -267,6 +284,10 @@ export async function updateProfile(userId: number, data: Partial<Profile>): Pro
 
 export async function updateProfileImage(userId: number, imagePath: string): Promise<Profile> {
   return updateProfile(userId, { imagePath })
+}
+
+export async function updateProfileCastCertificate(userId: number, castCertificatePath: string): Promise<Profile> {
+  return updateProfile(userId, { castCertificatePath })
 }
 
 export async function updateApprovalStatus(

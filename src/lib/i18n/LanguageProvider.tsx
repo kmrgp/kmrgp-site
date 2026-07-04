@@ -8,6 +8,8 @@ interface LangCtx {
   setLang: (l: Lang) => void
   toggle: () => void
   t: (key: DictKey, vars?: Record<string, string | number>) => string
+  /** Placeholders / typed data hints — always English. */
+  tEn: (key: DictKey, vars?: Record<string, string | number>) => string
   animKey: number
 }
 
@@ -60,7 +62,12 @@ export function LanguageProvider({ children, initialLang = DEFAULT_LANG }: { chi
     [lang]
   )
 
-  return <Ctx.Provider value={{ lang, setLang, toggle, t, animKey }}>{children}</Ctx.Provider>
+  const tEn = useCallback(
+    (key: DictKey, vars?: Record<string, string | number>) => translate("en", key, vars),
+    []
+  )
+
+  return <Ctx.Provider value={{ lang, setLang, toggle, t, tEn, animKey }}>{children}</Ctx.Provider>
 }
 
 export function useLang(): LangCtx {
@@ -72,6 +79,7 @@ export function useLang(): LangCtx {
       setLang: () => {},
       toggle: () => {},
       t: (key, vars) => translate(DEFAULT_LANG, key, vars),
+      tEn: (key, vars) => translate("en", key, vars),
       animKey: 0,
     }
   }

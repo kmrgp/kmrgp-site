@@ -4,8 +4,30 @@ import Link from "next/link"
 import { MapPin, Phone, Mail } from "lucide-react"
 import { useLang } from "@/lib/i18n/LanguageProvider"
 
-export function Footer() {
+export function Footer({ compact = false }: { compact?: boolean }) {
   const { t } = useLang()
+
+  if (compact) {
+    return (
+      <footer className="border-t border-gold/30 bg-maroon text-white pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-0">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-6 text-center sm:flex-row sm:justify-between sm:text-left">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-gold bg-gradient-to-br from-saffron to-maroon font-heading text-lg font-extrabold">
+              K
+            </div>
+            <span className="text-sm font-bold text-gold">{t("brand.name")}</span>
+          </div>
+          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs">
+            <Link href="/" className="hover:text-gold">{t("footer.home")}</Link>
+            <Link href="/profiles" className="hover:text-gold">{t("footer.partnerSearch")}</Link>
+            <Link href="/dashboard" className="hover:text-gold">{t("footer.myDashboard")}</Link>
+          </nav>
+          <p className="text-[10px] text-cream-dark">{t("footer.rights")}</p>
+        </div>
+      </footer>
+    )
+  }
+
   return (
     <footer className="border-t-4 border-gold bg-maroon text-white">
       <div className="mx-auto max-w-7xl px-6 py-12">
