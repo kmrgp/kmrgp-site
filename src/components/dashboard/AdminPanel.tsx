@@ -429,15 +429,17 @@ function MemberTable({
   onView: (p: PublicProfile) => void
   onDelete?: (p: PublicProfile) => void
 }) {
+  const { t } = useLang()
+
   return (
     <Table>
       <TableHeader>
         <TableRow className="bg-cream/50">
-          <TableHead>Name</TableHead>
-          <TableHead className="hidden md:table-cell">Phone</TableHead>
-          <TableHead className="hidden md:table-cell">District</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead>{t("admin.name")}</TableHead>
+          <TableHead className="hidden md:table-cell">{t("admin.phone")}</TableHead>
+          <TableHead className="hidden md:table-cell">{t("admin.location")}</TableHead>
+          <TableHead>{t("admin.status")}</TableHead>
+          <TableHead className="text-right">{t("admin.actions")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -462,11 +464,11 @@ function MemberTable({
             <TableCell className="text-right">
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="outline" onClick={() => onView(p)}>
-                  <Eye className="mr-1 h-3.5 w-3.5" /> View
+                  <Eye className="mr-1 h-3.5 w-3.5" /> {t("admin.review")}
                 </Button>
                 {mode !== "pending" && onDelete && (
                   <Button size="sm" variant="destructive" onClick={() => onDelete(p)}>
-                    <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                    <Trash2 className="mr-1 h-3.5 w-3.5" /> {t("admin.delete")}
                   </Button>
                 )}
               </div>
@@ -479,17 +481,24 @@ function MemberTable({
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const styles = {
+  const { t } = useLang()
+  const styles: Record<string, string> = {
     APPROVED: "bg-green-100 text-green-700",
     PENDING: "bg-amber-100 text-amber-700",
     REJECTED: "bg-red-100 text-red-700",
+    SENT: "bg-slate-100 text-slate-700",
   }
-  const label = status === "APPROVED" ? "Approved" : status === "PENDING" ? "Pending" : "Rejected"
+  const labels: Record<string, string> = {
+    APPROVED: t("admin.statusApproved"),
+    PENDING: t("admin.statusPending"),
+    REJECTED: t("admin.statusRejected"),
+    SENT: t("admin.statusDraft"),
+  }
+  const style = styles[status] ?? styles.SENT
+  const label = labels[status] ?? t("admin.statusDraft")
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-        styles[status as keyof typeof styles] ?? "bg-gray-100 text-gray-700"
-      }`}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${style}`}
     >
       {label}
     </span>

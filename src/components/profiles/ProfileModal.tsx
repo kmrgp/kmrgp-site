@@ -79,6 +79,9 @@ export function ProfileModal({
       onOpenContactDialog(profile, "APPROVED", localContact)
       return
     }
+    if (localStatus === "REJECTED") {
+      toast.info(t("profiles.contactRejectedRetry"))
+    }
 
     setRequesting(true)
     const res = await requestContactAction(profile.userId)
@@ -130,10 +133,14 @@ export function ProfileModal({
               <div className="min-w-0">
                 <h2 className="font-heading text-2xl font-bold text-maroon">{profile.username}</h2>
                 <div className="mb-4 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-maroon px-3 py-1 text-xs font-bold text-white">
-                    <ShieldCheck className="h-3 w-3" /> {t("modal.verified")}
+                  {profile.approvalStatus === "APPROVED" && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-maroon px-3 py-1 text-xs font-bold text-white">
+                      <ShieldCheck className="h-3 w-3" /> {t("modal.verified")}
+                    </span>
+                  )}
+                  <span className="rounded-full bg-cream-dark px-3 py-1 text-xs font-bold text-maroon">
+                    {profile.type === "GROOM" ? t("profiles.groom") : t("profiles.bride")}
                   </span>
-                  <span className="rounded-full bg-cream-dark px-3 py-1 text-xs font-bold text-maroon">{profile.type}</span>
                   <span className="rounded-full bg-cream-dark px-3 py-1 text-xs font-bold text-maroon">{profile.community}</span>
                 </div>
 

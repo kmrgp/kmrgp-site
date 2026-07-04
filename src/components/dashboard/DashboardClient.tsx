@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Heart, Shield, Crown } from "lucide-react"
@@ -40,10 +40,19 @@ export function DashboardClient({ profile, role, stats }: DashboardClientProps) 
 
   const tabFromUrl = parseTab(searchParams.get("tab"), isAdmin, isSuperAdmin)
   const [activeTab, setActiveTab] = useState<DashboardTab>(tabFromUrl)
+  const [liveProfile, setLiveProfile] = useState(profile)
 
   useEffect(() => {
     setActiveTab(tabFromUrl)
   }, [tabFromUrl])
+
+  useEffect(() => {
+    setLiveProfile(profile)
+  }, [profile])
+
+  const handleProfileUpdate = useCallback((patch: Partial<PublicProfile>) => {
+    setLiveProfile((prev) => ({ ...prev, ...patch }))
+  }, [])
 
   function setTab(tab: DashboardTab) {
     setActiveTab(tab)
@@ -91,8 +100,14 @@ export function DashboardClient({ profile, role, stats }: DashboardClientProps) 
             <TabsContent value="profile" className="mt-0 min-w-0 focus-visible:outline-none">
               {activeTab === "profile" && (
                 <>
-                  {profile.approvalStatus !== "APPROVED" && <ProfileCompleteness profile={profile} />}
-                  <BioDataEditor profile={profile} role={role} />
+                  {liveProfile.approvalStatus !== "APPROVED" && (
+                    <ProfileCompleteness profile={liveProfile} />
+                  )}
+                  <BioDataEditor
+                    profile={liveProfile}
+                    role={role}
+                    onProfileUpdate={handleProfileUpdate}
+                  />
                 </>
               )}
             </TabsContent>

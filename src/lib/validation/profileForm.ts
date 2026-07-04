@@ -74,6 +74,45 @@ export function ageFromDob(dob: string): number | null {
   return age
 }
 
+export type ProfileSectionId = "candidate" | "education" | "extras"
+
+/** Validate only the fields in a dashboard section before partial save. */
+export function validateProfileSection(
+  section: ProfileSectionId,
+  data: Omit<ProfileFormInput, "hasPhoto" | "declarationAccepted" | "forSubmit">
+): ProfileFormErrors {
+  const errors: ProfileFormErrors = {}
+
+  if (section === "candidate") {
+    if (!data.type) errors.type = "bio.err.candidateType"
+    if (data.username.trim().length < 2) errors.username = "auth.err.fullName"
+    if (!data.dob) {
+      errors.dob = "auth.err.dob"
+    } else {
+      const age = ageFromDob(data.dob)
+      if (age === null) errors.dob = "auth.err.dobInvalid"
+      else if (age < 18) errors.dob = "auth.err.dobAge"
+    }
+    if (!data.address.trim()) errors.address = "bio.err.address"
+    if (!data.gotraSelf.trim()) errors.gotraSelf = "auth.err.gotraSelf"
+    if (!data.gotraMother.trim()) errors.gotraMother = "auth.err.gotraMother"
+  }
+
+  if (section === "education") {
+    if (!data.education.trim()) errors.education = "bio.err.education"
+    if (!data.profession.trim()) errors.profession = "bio.err.profession"
+    if (!data.fatherName.trim()) errors.fatherName = "bio.err.fatherName"
+    if (!data.fatherOccupation.trim()) errors.fatherOccupation = "bio.err.fatherOccupation"
+    if (!data.motherName.trim()) errors.motherName = "bio.err.motherName"
+    if (!data.motherOccupation.trim()) errors.motherOccupation = "bio.err.motherOccupation"
+    if (!data.familyType.trim()) errors.familyType = "bio.err.familyType"
+    if (!isValidIndianMobile(data.contact)) errors.contact = "bio.err.candidateMobile"
+    if (!isValidIndianMobile(data.guardianMobile)) errors.guardianMobile = "bio.err.guardianMobile"
+  }
+
+  return errors
+}
+
 /** Returns i18n dict keys for field errors. */
 export function validateProfileForm(data: ProfileFormInput): ProfileFormErrors {
   const errors: ProfileFormErrors = {}

@@ -50,6 +50,23 @@ export function AdminReviewModal({
   const isPending = status === "PENDING"
   const isRejected = status === "REJECTED"
   const isApproved = status === "APPROVED"
+  const isDraft = status === "SENT"
+
+  const statusColor = isApproved
+    ? "text-green-600"
+    : isPending
+      ? "text-amber-600"
+      : isRejected
+        ? "text-red-600"
+        : "text-slate-600"
+
+  const statusLabel = isApproved
+    ? t("admin.statusApproved")
+    : isPending
+      ? t("admin.statusPending")
+      : isRejected
+        ? t("admin.statusRejected")
+        : t("admin.statusDraft")
 
   return (
     <Dialog
@@ -69,12 +86,8 @@ export function AdminReviewModal({
           </DialogTitle>
           <DialogDescription>
             {profile.username} · {profile.type} ·{" "}
-            <span
-              className={`font-bold ${
-                isPending ? "text-amber-600" : isApproved ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              {status}
+            <span className={`font-bold ${statusColor}`}>
+              {statusLabel}
             </span>
             {profile.isSeed && (
               <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-800">
@@ -168,8 +181,11 @@ export function AdminReviewModal({
             </div>
           </div>
 
-          {(isPending || isRejected) && (
+          {(isPending || isRejected || isDraft) && (
             <div className="space-y-3 rounded-xl border border-gold-light bg-white p-4">
+              {isDraft && (
+                <p className="text-sm text-muted-foreground">{t("admin.draftHint")}</p>
+              )}
               <p className="text-sm font-semibold text-maroon">{t("admin.publicOnApprove")}</p>
               <label className="flex cursor-pointer items-start gap-3">
                 <input
@@ -200,6 +216,28 @@ export function AdminReviewModal({
           )}
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-gold-light pt-4">
+            {isDraft && (
+              <>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    onReject(profile.userId)
+                    onOpenChange(false)
+                  }}
+                >
+                  <X className="mr-1 h-4 w-4" /> {t("admin.reject")}
+                </Button>
+                <Button
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    onApprove(profile.userId, { showPublic, featureOnHome })
+                    onOpenChange(false)
+                  }}
+                >
+                  <CheckCircle2 className="mr-1 h-4 w-4" /> {t("admin.approve")}
+                </Button>
+              </>
+            )}
             {isPending && (
               <>
                 <Button

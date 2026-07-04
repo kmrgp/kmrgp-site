@@ -160,6 +160,9 @@ export async function searchProfiles(filters: ProfileSearchFilters): Promise<Pro
       or(ilike(profiles.education, k), ilike(profiles.profession, k)) as SQL
     )
   }
+  if (filters.verifiedOnly) {
+    conditions.push(eq(profiles.isSeed, false))
+  }
 
   // Age filter via DOB year. dob is a varchar like "1995-08-15" or "15/08/1995".
   // We filter on the year component; precise day-level age is applied in-memory.
@@ -274,6 +277,48 @@ export async function createProfile(userId: number, data: Partial<Profile>): Pro
   const [profile] = await db.insert(profiles).values({ userId, ...data } as Profile).returning()
   invalidateProfileListCaches(userId)
   return profile
+}
+
+const PROFILE_PATCH_KEYS = [
+  "bio",
+  "dob",
+  "height",
+  "type",
+  "gotraSelf",
+  "gotraMother",
+  "education",
+  "currentEducation",
+  "profession",
+  "companyName",
+  "district",
+  "community",
+  "gender",
+  "fatherName",
+  "motherName",
+  "fatherOccupation",
+  "motherOccupation",
+  "address",
+  "contact",
+  "guardianMobile",
+  "whatsappNumber",
+  "brothers",
+  "sisters",
+  "familyType",
+  "parentsOccupation",
+  "hobbies",
+  "additionalDetails",
+  "visible",
+] as const satisfies readonly (keyof Profile)[]
+
+/** Whitelist form/API keys so Drizzle only receives known profile columns. */
+export function buildProfilePatch(data: Record<string, unknown>): Partial<Profile> {
+  const patch: Partial<Profile> = {}
+  for (const key of PROFILE_PATCH_KEYS) {
+    if (data[key] !== undefined) {
+      ;(patch as Record<string, unknown>)[key] = data[key]
+    }
+  }
+  return patch
 }
 
 export async function updateProfile(userId: number, data: Partial<Profile>): Promise<Profile> {

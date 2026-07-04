@@ -9,7 +9,7 @@ const REQUEST_STATUS_KEY = (requesterId: number, ownerId: number) =>
   `contact_request:${requesterId}:${ownerId}`
 const PENDING_REQUESTS_KEY = "contact_requests:pending"
 
-export type ContactRequestStatus = "PENDING" | "APPROVED" | null
+export type ContactRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | null
 
 export interface ContactRequestDetails {
   status: ContactRequestStatus
@@ -75,7 +75,9 @@ export async function getContactRequestDetails(
       ? { status: "APPROVED", contact: row.contact ?? null }
       : row?.status === "PENDING"
         ? { status: "PENDING", contact: null }
-        : { status: null, contact: null }
+        : row?.status === "REJECTED"
+          ? { status: "REJECTED", contact: null }
+          : { status: null, contact: null }
 
   cacheSet(REQUEST_STATUS_KEY(requesterId, ownerId), details)
   return details
@@ -105,7 +107,13 @@ export async function getContactRequestStatuses(
 
   for (const row of rows) {
     result[row.ownerId] =
-      row.status === "APPROVED" ? "APPROVED" : row.status === "PENDING" ? "PENDING" : null
+      row.status === "APPROVED"
+        ? "APPROVED"
+        : row.status === "PENDING"
+          ? "PENDING"
+          : row.status === "REJECTED"
+            ? "REJECTED"
+            : null
   }
   return result
 }
@@ -130,6 +138,17 @@ export async function createContactRequest(
     .limit(1)
 
   if (existing) {
+    if (existing.status === "REJECTED") {
+      await db
+        .update(contactRequests)
+        .set({ status: "PENDING" })
+        .where(eq(contactRequests.id, existing.id))
+      await sendInterest(requesterId, ownerId)
+      cacheDelete(REQUEST_STATUS_KEY(requesterId, ownerId))
+      cacheDelete(PENDING_REQUESTS_KEY)
+      cacheDeletePattern("contact_requests:")
+      return { success: true, alreadyRequested: false }
+    }
     return { success: true, alreadyRequested: true }
   }
 

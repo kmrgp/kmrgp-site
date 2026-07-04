@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { Header } from "@/components/layout/Header"
 import { getSession } from "@/lib/auth/session"
-import { searchProfiles } from "@/lib/services/profileService"
+import { searchProfiles, getProfileByUserId } from "@/lib/services/profileService"
 import { getDashboardStats } from "@/lib/services/dashboardService"
 import { getAdminContactPhone } from "@/lib/services/adminContactService"
 import { ProfilesClient } from "@/components/profiles/ProfilesClient"
@@ -32,10 +32,11 @@ export default async function ProfilesPage() {
     )
   }
 
-  const [firstPage, stats, adminPhone] = await Promise.all([
+  const [firstPage, stats, adminPhone, myProfile] = await Promise.all([
     searchProfiles({ page: 1, pageSize: 9 }),
     getDashboardStats(session.id),
     getAdminContactPhone(),
+    getProfileByUserId(session.id),
   ])
 
   return (
@@ -47,6 +48,7 @@ export default async function ProfilesPage() {
             initialProfiles={firstPage.profiles}
             initialTotal={firstPage.total}
             user={session}
+            approvalStatus={myProfile?.approvalStatus ?? null}
             adminPhone={adminPhone}
           />
         </MemberAppShell>

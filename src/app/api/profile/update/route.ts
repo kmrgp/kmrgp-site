@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { getSession } from "@/lib/auth/session"
-import { getProfileByUserId, updateProfile } from "@/lib/services/profileService"
+import {
+  buildProfilePatch,
+  getProfileByUserId,
+  updateProfile,
+} from "@/lib/services/profileService"
 import { updateUserUsername } from "@/lib/services/userService"
 import type { ProfileType } from "@/types"
 
@@ -23,20 +27,27 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 })
   }
 
-  const { username, visible, type, ...rest } = body
+  const { username, type, ...rest } = body
 
   if (username !== undefined) {
     await updateUserUsername(session.id, String(username).trim())
   }
 
-  const patch: Record<string, unknown> = { ...rest }
-  if (visible !== undefined) patch.visible = visible
+  const patch = buildProfilePatch(rest)
   if (type !== undefined) patch.type = type as ProfileType
+
+  if (patch.visible === true && profile.approvalStatus !== "APPROVED" && session.role === "USER") {
+    return NextResponse.json(
+      { success: false, error: "Profile must be admin-approved before it can be shown publicly." },
+      { status: 400 }
+    )
+  }
 
   if (Object.keys(patch).length > 0) {
     await updateProfile(session.id, patch)
   }
 
+  const updated = await getProfileByUserId(session.id)
   revalidatePath("/dashboard")
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, profile: updated })
 }

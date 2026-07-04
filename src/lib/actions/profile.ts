@@ -6,6 +6,8 @@ import { getProfileByUserId, updateProfile } from "@/lib/services/profileService
 import { updateUserUsername } from "@/lib/services/userService"
 import type { ProfileType } from "@/types"
 
+const SUBMITTABLE_STATUSES = new Set(["SENT", "REJECTED"])
+
 export async function getMyProfile() {
   const session = await getSession()
   if (!session) return null
@@ -65,8 +67,8 @@ export async function requestApprovalAction() {
 
   const profile = await getProfileByUserId(session.id)
   if (!profile) return { success: false, error: "Profile not found" }
-  if (profile.approvalStatus !== "SENT") {
-    return { success: false, error: "Approval has already been requested." }
+  if (!SUBMITTABLE_STATUSES.has(profile.approvalStatus)) {
+    return { success: false, error: "Approval has already been requested or your profile is verified." }
   }
 
   await updateProfile(session.id, { approvalStatus: "PENDING" })

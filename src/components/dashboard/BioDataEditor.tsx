@@ -30,6 +30,7 @@ import { useLang } from "@/lib/i18n/LanguageProvider"
 import {
   ageFromDob,
   validateProfileForm,
+  validateProfileSection,
   PROFILE_FIELD_ORDER,
   type ProfileFormErrors,
 } from "@/lib/validation/profileForm"
@@ -41,6 +42,7 @@ import { cn } from "@/lib/utils"
 interface BioDataEditorProps {
   profile: PublicProfile
   role: Role
+  onProfileUpdate?: (profile: Partial<PublicProfile>) => void
 }
 
 type FormState = {
@@ -113,7 +115,7 @@ function isSectionDirty(section: SectionId, form: FormState, baseline: FormState
   return SECTION_FIELDS[section].some((key) => form[key] !== baseline[key])
 }
 
-async function patchProfileApi(data: Record<string, unknown>) {
+async function patchProfileApi(data: Record<string, unknown>): Promise<PublicProfile | null> {
   const res = await fetch("/api/profile/update", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -123,6 +125,7 @@ async function patchProfileApi(data: Record<string, unknown>) {
   if (!res.ok || !json.success) {
     throw new Error(json.error || "Save failed")
   }
+  return json.profile ?? null
 }
 
 function defaultGender(type: PublicProfile["type"]) {
@@ -163,7 +166,7 @@ function formFromProfile(profile: PublicProfile): FormState {
 
 const MAX_UPLOAD = 10 * 1024 * 1024
 
-export function BioDataEditor({ profile, role }: BioDataEditorProps) {
+export function BioDataEditor({ profile, role, onProfileUpdate }: BioDataEditorProps) {
   const { t } = useLang()
   const router = useRouter()
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit")
@@ -182,7 +185,8 @@ export function BioDataEditor({ profile, role }: BioDataEditorProps) {
   const castRef = useRef<HTMLInputElement | null>(null)
 
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN"
-  const locked = false
+  const locked = !isAdmin && profile.approvalStatus === "APPROVED"
+  const canToggleVisibility = isAdmin || profile.approvalStatus === "APPROVED"
   const computedAge = useMemo(() => ageFromDob(form.dob), [form.dob])
 
   const sectionDirty = useMemo(
@@ -204,6 +208,14 @@ export function BioDataEditor({ profile, role }: BioDataEditorProps) {
     setHasPhoto(!!profile.imageUrl)
     setCastUrl(profile.castCertificateUrl)
   }, [profile.imageUrl, profile.castCertificateUrl])
+
+  useEffect(() => {
+    const next = formFromProfile(profile)
+    setForm(next)
+    setBaseline(next)
+    // Reset editor when approval workflow changes (e.g. admin reject/approve).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: avoid clobbering edits on every profile field refresh
+  }, [profile.approvalStatus, profile.userId])
 
   function errMsg(key?: string) {
     return key ? t(key as DictKey) : undefined
@@ -250,9 +262,11 @@ export function BioDataEditor({ profile, role }: BioDataEditorProps) {
     }
     if (kind === "cast") {
       setCastUrl(json.fileUrl)
+      onProfileUpdate?.({ castCertificateUrl: json.fileUrl })
       toast.success(t("bio.castUploaded"))
     } else {
       setHasPhoto(true)
+      onProfileUpdate?.({ imageUrl: json.imageUrl ?? json.fileUrl })
       toast.success(t("bio.photoUploaded"))
     }
     router.refresh()
@@ -302,10 +316,35 @@ export function BioDataEditor({ profile, role }: BioDataEditorProps) {
   }
 
   async function saveSection(section: SectionId) {
+    const sectionErrors = validateProfileSection(section, {
+      username: form.username,
+      type: form.type,
+      dob: form.dob,
+      address: form.address,
+      gotraSelf: form.gotraSelf,
+      gotraMother: form.gotraMother,
+      education: form.education,
+      profession: form.profession,
+      fatherName: form.fatherName,
+      fatherOccupation: form.fatherOccupation,
+      motherName: form.motherName,
+      motherOccupation: form.motherOccupation,
+      familyType: form.familyType,
+      contact: form.contact,
+      guardianMobile: form.guardianMobile,
+    })
+    if (Object.keys(sectionErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...sectionErrors }))
+      scrollToFirstFieldError(sectionErrors, PROFILE_FIELD_ORDER)
+      toast.error(t("bio.fixErrors"))
+      return
+    }
+
     setSavingSection(section)
     try {
-      await patchProfileApi(pickSectionData(form, section))
+      const updated = await patchProfileApi(pickSectionData(form, section))
       setBaseline((prev) => ({ ...prev, ...pickSectionData(form, section) }))
+      if (updated) onProfileUpdate?.(updated)
       setSavedFlash(section)
       toast.success(t("bio.sectionSaved"))
       router.refresh()
@@ -334,8 +373,9 @@ export function BioDataEditor({ profile, role }: BioDataEditorProps) {
     setSaving(true)
     try {
       const { visible: _visible, ...payload } = form
-      await patchProfileApi(payload)
+      const updated = await patchProfileApi(payload)
       setBaseline({ ...form })
+      if (updated) onProfileUpdate?.(updated)
       toast.success(t("bio.saved"))
       router.refresh()
       return true
@@ -362,6 +402,8 @@ export function BioDataEditor({ profile, role }: BioDataEditorProps) {
         return
       }
       toast.success(t("bio.submitted"))
+      if (json.profile) onProfileUpdate?.(json.profile)
+      else onProfileUpdate?.({ approvalStatus: "PENDING" })
       router.refresh()
     } catch {
       toast.error(t("bio.uploadFailed"))
@@ -370,13 +412,15 @@ export function BioDataEditor({ profile, role }: BioDataEditorProps) {
 
   async function handleToggleVisibility() {
     try {
-      await patchProfileApi({ visible: !form.visible })
+      const nextVisible = !form.visible
+      const updated = await patchProfileApi({ visible: nextVisible })
       setForm((prev) => {
-        const next = { ...prev, visible: !prev.visible }
-        setBaseline((b) => ({ ...b, visible: next.visible }))
+        const next = { ...prev, visible: nextVisible }
+        setBaseline((b) => ({ ...b, visible: nextVisible }))
         return next
       })
-      toast.success(form.visible ? t("bio.hidden") : t("bio.shown"))
+      if (updated) onProfileUpdate?.(updated)
+      toast.success(nextVisible ? t("bio.shown") : t("bio.hidden"))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("bio.uploadFailed"))
     }
@@ -445,19 +489,27 @@ export function BioDataEditor({ profile, role }: BioDataEditorProps) {
         )}
       </div>
 
-      <div className="mb-5 flex flex-col gap-4 rounded-xl border border-gold-light bg-cream-dark p-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className={`mb-5 flex flex-col gap-4 rounded-xl border border-gold-light bg-cream-dark p-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between ${!canToggleVisibility ? "opacity-60" : ""}`}>
         <div className="flex min-w-0 items-center gap-3">
           {form.visible ? <Eye className="h-5 w-5 shrink-0 text-green-600" /> : <EyeOff className="h-5 w-5 shrink-0 text-saffron" />}
           <div className="min-w-0">
             <div className="font-bold text-maroon">{form.visible ? t("bio.profileVisible") : t("bio.profileHidden")}</div>
-            <div className="text-xs text-muted-foreground">{form.visible ? t("bio.profileVisibleDesc") : t("bio.profileHiddenDesc")}</div>
+            <div className="text-xs text-muted-foreground">
+              {canToggleVisibility
+                ? form.visible
+                  ? t("bio.profileVisibleDesc")
+                  : t("bio.profileHiddenDesc")
+                : t("bio.visibilityLocked")}
+            </div>
           </div>
         </div>
         <button
           type="button"
           onClick={handleToggleVisibility}
-          className={`relative h-6 w-11 shrink-0 self-end rounded-full transition sm:self-center ${form.visible ? "bg-green-600" : "bg-saffron"}`}
+          disabled={!canToggleVisibility}
+          className={`relative h-6 w-11 shrink-0 self-end rounded-full transition sm:self-center ${form.visible ? "bg-green-600" : "bg-saffron"} ${!canToggleVisibility ? "cursor-not-allowed opacity-50" : ""}`}
           aria-label={form.visible ? t("bio.hideProfile") : t("bio.showProfile")}
+          aria-pressed={form.visible}
         >
           <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${form.visible ? "left-6" : "left-1"}`} />
         </button>

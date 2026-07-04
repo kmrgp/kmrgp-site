@@ -16,11 +16,12 @@ import { requestContactAction, getContactStatusesAction, getContactStatusAction 
 import { searchProfilesAction } from "@/lib/actions/profiles"
 import { useLang } from "@/lib/i18n/LanguageProvider"
 import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
-import type { PublicProfile, SessionUser } from "@/types"
+import type { ApprovalStatus, PublicProfile, SessionUser } from "@/types"
 
 interface ProfilesClientProps {
   initialProfiles: PublicProfile[]
   user: SessionUser | null
+  approvalStatus: ApprovalStatus | null
   initialTotal: number
   adminPhone: string | null
 }
@@ -38,7 +39,7 @@ const HEIGHT_FILTER_OPTIONS = [
 
 const PAGE_SIZE = 9
 
-export function ProfilesClient({ initialProfiles, user, initialTotal, adminPhone }: ProfilesClientProps) {
+export function ProfilesClient({ initialProfiles, user, approvalStatus, initialTotal, adminPhone }: ProfilesClientProps) {
   const { t } = useLang()
   const [selected, setSelected] = useState<PublicProfile | null>(null)
   const [contactStatuses, setContactStatuses] = useState<Record<number, ContactRequestStatus>>({})
@@ -98,22 +99,27 @@ export function ProfilesClient({ initialProfiles, user, initialTotal, adminPhone
   }, [initialProfiles, loadContactStatuses])
 
   const buildFilters = useCallback(
-    (forPage: number) => ({
-      gender: gender as "groom" | "bride" | "all",
-      ageMin,
-      ageMax,
-      community,
-      district,
-      gotraQuery: gotraQuery.trim() || undefined,
-      gotraExclude: gotraExclude.trim() || undefined,
-      keyword: keyword.trim() || undefined,
-      verifiedOnly,
-      heightMinInches: heightMin || undefined,
-      sort,
-      page: forPage,
-      pageSize: PAGE_SIZE,
-    }),
-    [gender, ageMin, ageMax, community, district, gotraQuery, gotraExclude, keyword, verifiedOnly, heightMin, sort]
+    (forPage: number) => {
+      const filters: Parameters<typeof searchProfilesAction>[0] = {
+        gender: gender as "groom" | "bride" | "all",
+        community,
+        district,
+        gotraQuery: gotraQuery.trim() || undefined,
+        gotraExclude: gotraExclude.trim() || undefined,
+        keyword: keyword.trim() || undefined,
+        heightMinInches: heightMin || undefined,
+        sort,
+        page: forPage,
+        pageSize: PAGE_SIZE,
+      }
+      if (applied) {
+        filters.ageMin = ageMin
+        filters.ageMax = ageMax
+        filters.verifiedOnly = verifiedOnly
+      }
+      return filters
+    },
+    [gender, ageMin, ageMax, community, district, gotraQuery, gotraExclude, keyword, verifiedOnly, heightMin, sort, applied]
   )
 
   const runSearch = useCallback(
@@ -192,6 +198,9 @@ export function ProfilesClient({ initialProfiles, user, initialTotal, adminPhone
       openContactDialog(profile, "APPROVED", contact)
       return
     }
+    if (existing === "REJECTED") {
+      toast.info(t("profiles.contactRejectedRetry"))
+    }
 
     const res = await requestContactAction(profile.userId)
     if (!res.success) {
@@ -208,10 +217,10 @@ export function ProfilesClient({ initialProfiles, user, initialTotal, adminPhone
     openContactDialog(profile, "PENDING")
   }
 
-  function handleContactStatusChange(userId: number, status: ContactRequestStatus, contact: string | null) {
+  const handleContactStatusChange = useCallback((userId: number, status: ContactRequestStatus, contact: string | null) => {
     setContactStatuses((prev) => ({ ...prev, [userId]: status }))
     if (contact) setApprovedContacts((prev) => ({ ...prev, [userId]: contact }))
-  }
+  }, [])
 
   return (
     <>
@@ -222,14 +231,26 @@ export function ProfilesClient({ initialProfiles, user, initialTotal, adminPhone
             <p className="mt-1 text-sm text-muted-foreground">{t("profiles.subtitle")}</p>
           </div>
 
+          {user && approvalStatus && approvalStatus !== "APPROVED" && user.role === "USER" && (
+            <div
+              className={`mb-5 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold sm:mb-6 sm:text-sm ${
+                approvalStatus === "REJECTED"
+                  ? "border-red-300 bg-red-50 text-red-900"
+                  : approvalStatus === "PENDING"
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-slate-300 bg-slate-50 text-slate-900"
+              }`}
+            >
+              <Unlock className="h-4 w-4 shrink-0" />
+              {approvalStatus === "REJECTED"
+                ? t("profiles.accountRejected")
+                : approvalStatus === "PENDING"
+                  ? t("profiles.accountPending")
+                  : t("profiles.accountDraft")}
+            </div>
+          )}
           {user && (
             <div className="mb-5 flex flex-col gap-2 sm:mb-6">
-              {!user.isApproved && user.role === "USER" && (
-                <div className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-900 sm:text-sm">
-                  <Unlock className="h-4 w-4 shrink-0" />
-                  {t("profiles.accountPending")}
-                </div>
-              )}
               <div className="flex items-center gap-2 rounded-xl border border-gold bg-white px-3 py-2.5 text-xs font-semibold text-maroon sm:text-sm">
                 <Unlock className="h-4 w-4 shrink-0 text-gold" />
                 {t("profiles.contactViaAdmin")}

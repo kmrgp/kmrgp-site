@@ -82,6 +82,7 @@ export async function updateUserUsername(id: number, username: string): Promise<
   const [user] = await db.update(users).set({ username }).where(eq(users.id, id)).returning()
   cacheSet(USER_KEY(id), user)
   cacheSet(USER_PHONE_KEY(user.phone), user)
+  cacheDelete(`profile:${id}`)
   return user
 }
 

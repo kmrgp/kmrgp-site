@@ -1,4 +1,4 @@
-import { eq, and, or, count } from "drizzle-orm"
+import { eq, and, or, count, ne } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { interests, users, profiles, type Interest, type User, type Profile } from "@/lib/db/schema"
 import { cacheDeletePattern, cacheGet, cacheSet } from "@/lib/cache"
@@ -86,7 +86,7 @@ export async function getReceivedInterests(receiverId: number) {
     .from(interests)
     .leftJoin(users, eq(interests.senderId, users.id))
     .leftJoin(profiles, eq(interests.senderId, profiles.userId))
-    .where(eq(interests.receiverId, receiverId))) as InterestRow[]
+    .where(and(eq(interests.receiverId, receiverId), eq(interests.status, "PENDING")))) as InterestRow[]
 
   const result = rows.map((row) => toInterestWithProfile(row, false))
   cacheSet(RECEIVED_KEY(receiverId), result)
@@ -102,7 +102,7 @@ export async function getSentInterests(senderId: number): Promise<InterestWithPr
     .from(interests)
     .leftJoin(users, eq(interests.receiverId, users.id))
     .leftJoin(profiles, eq(interests.receiverId, profiles.userId))
-    .where(eq(interests.senderId, senderId))) as InterestRow[]
+    .where(and(eq(interests.senderId, senderId), ne(interests.status, "ACCEPTED")))) as InterestRow[]
 
   // For sent interests, the joined user/profile is the RECEIVER.
   // toInterestWithProfile reads row.users/row.profiles regardless, so this works.

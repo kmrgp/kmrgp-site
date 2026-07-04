@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { authenticateUser, registerUser } from "@/lib/services/authService"
+import { isSubscriptionRequired } from "@/lib/services/subscriptionService"
 import { createSession, deleteSession, getSession } from "@/lib/auth/session"
 import type { ProfileType } from "@/types"
 import { isValidIndianMobile, normalizeIndianMobile } from "@/lib/validation/phone"
@@ -38,6 +39,14 @@ export async function registerAction(data: {
   const phone = normalizeIndianMobile(data.phone)
   if (!isValidIndianMobile(phone)) {
     return { success: false, error: "A valid 10-digit Indian mobile number is required." }
+  }
+
+  const { required: paymentRequired } = await isSubscriptionRequired()
+  if (paymentRequired) {
+    return {
+      success: false,
+      error: "Registration requires payment. Please complete checkout on the signup form.",
+    }
   }
 
   const result = await registerUser({ ...data, phone })

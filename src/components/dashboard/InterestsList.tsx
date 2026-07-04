@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Heart, CheckCircle2, X, HeartOff, Phone, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,7 @@ interface InterestItem {
 
 export function InterestsList() {
   const { t } = useLang()
+  const router = useRouter()
   const [received, setReceived] = useState<InterestItem[]>([])
   const [sent, setSent] = useState<InterestItem[]>([])
   const [acceptedReceived, setAcceptedReceived] = useState<InterestItem[]>([])
@@ -111,7 +113,8 @@ export function InterestsList() {
       return
     }
     toast.success(t("int.accepted"))
-    load()
+    await load()
+    router.refresh()
   }
 
   async function decline(id: number) {
@@ -121,7 +124,8 @@ export function InterestsList() {
       return
     }
     toast.info(t("int.declined"))
-    load()
+    await load()
+    router.refresh()
   }
 
   async function requestContactFor(ownerId: number, name: string | null) {
@@ -133,6 +137,9 @@ export function InterestsList() {
     if (existing === "APPROVED") {
       setContactDialog({ open: true, name, status: "APPROVED", approvedContact: approvedContacts[ownerId] ?? null })
       return
+    }
+    if (existing === "REJECTED") {
+      toast.info(t("profiles.contactRejectedRetry"))
     }
 
     const res = await requestContactAction(ownerId)

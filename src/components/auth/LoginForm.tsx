@@ -80,7 +80,9 @@ export function LoginForm() {
       return
     }
     toast.success(t("auth.loginSuccess"))
-    router.push(redirectTo.startsWith("/") ? redirectTo : "/")
+    const safeRedirect =
+      redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : "/dashboard"
+    router.push(safeRedirect)
     router.refresh()
   }
 
@@ -90,7 +92,7 @@ export function LoginForm() {
       description={t("auth.desc")}
       alternate={{ href: "/signup", label: t("auth.switchToSignup") }}
     >
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form onSubmit={handleLogin} noValidate className="space-y-4">
         <div className="space-y-2" data-form-field="phone">
           <Label htmlFor="login-phone">{t("auth.loginIdLabel")}</Label>
           <Input

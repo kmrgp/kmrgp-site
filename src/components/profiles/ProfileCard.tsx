@@ -29,7 +29,9 @@ export function ProfileCard({ profile, isLoggedIn, contactStatus = null, onView,
       ? t("card.contactApproved")
       : contactStatus === "PENDING"
         ? t("card.contactPending")
-        : t("card.contact")
+        : contactStatus === "REJECTED"
+          ? t("card.contactRetry")
+          : t("card.contact")
 
   return (
     <>
@@ -108,7 +110,7 @@ export function ProfileCard({ profile, isLoggedIn, contactStatus = null, onView,
             <Button
               size="sm"
               className="min-w-0 px-2"
-              variant={contactStatus === "PENDING" ? "outline" : "default"}
+              variant={contactStatus === "PENDING" || contactStatus === "REJECTED" ? "outline" : "default"}
               onClick={onContact}
             >
               {isLoggedIn ? (
@@ -116,6 +118,8 @@ export function ProfileCard({ profile, isLoggedIn, contactStatus = null, onView,
                   <><Clock className="mr-1 h-4 w-4 shrink-0" /><span className="truncate">{contactLabel}</span></>
                 ) : contactStatus === "APPROVED" ? (
                   <><CheckCircle2 className="mr-1 h-4 w-4 shrink-0" /><span className="truncate">{contactLabel}</span></>
+                ) : contactStatus === "REJECTED" ? (
+                  <><Phone className="mr-1 h-4 w-4 shrink-0" /><span className="truncate">{contactLabel}</span></>
                 ) : (
                   <><Phone className="mr-1 h-4 w-4 shrink-0" /><span className="truncate">{contactLabel}</span></>
                 )

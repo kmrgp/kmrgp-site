@@ -25,7 +25,18 @@ export function MemberHome({ username, profile, stats }: MemberHomeProps) {
       ? t("member.statusApproved")
       : profile?.approvalStatus === "PENDING"
         ? t("member.statusPending")
-        : t("member.statusDraft")
+        : profile?.approvalStatus === "REJECTED"
+          ? t("member.statusRejected")
+          : t("member.statusDraft")
+
+  const statusAccent =
+    profile?.approvalStatus === "APPROVED"
+      ? "bg-green-50 text-green-700"
+      : profile?.approvalStatus === "PENDING"
+        ? "bg-amber-50 text-amber-800"
+        : profile?.approvalStatus === "REJECTED"
+          ? "bg-red-50 text-red-700"
+          : "bg-slate-50 text-slate-700"
 
   return (
     <main className="w-full min-w-0 bg-cream">
@@ -54,8 +65,10 @@ export function MemberHome({ username, profile, stats }: MemberHomeProps) {
           </Card>
         )}
 
-        <div className="mb-6 grid grid-cols-3 gap-2 sm:mb-8 sm:gap-4 lg:grid-cols-3">
-          <StatCard icon={Eye} value={stats.profileViews} label={t("dash.views")} />
+        <div className={`mb-6 grid gap-2 sm:mb-8 sm:gap-4 ${stats.profileViews > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
+          {stats.profileViews > 0 && (
+            <StatCard icon={Eye} value={stats.profileViews} label={t("dash.views")} />
+          )}
           <StatCard icon={Heart} value={stats.interestsReceived} label={t("dash.interests")} />
           <StatCard icon={Sparkles} value={stats.acceptedMatches} label={t("dash.newMatches")} />
         </div>
@@ -89,7 +102,7 @@ export function MemberHome({ username, profile, stats }: MemberHomeProps) {
             icon={ShieldCheck}
             title={t("member.profileStatus")}
             desc={approvalLabel}
-            accent="bg-green-50 text-green-700"
+            accent={statusAccent}
           />
         </div>
 

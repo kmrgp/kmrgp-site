@@ -61,20 +61,23 @@ export function SignupForm() {
     durationDays?: number
     planName?: string
   }>({ required: false })
+  const [planReady, setPlanReady] = useState(false)
 
   useEffect(() => {
-    getRegistrationPlanAction().then((res) => {
-      if (res.success && res.required && res.plan) {
-        setRegPlan({
-          required: true,
-          amountInr: res.plan.amountInr,
-          durationDays: res.plan.durationDays,
-          planName: res.plan.name,
-        })
-      } else {
-        setRegPlan({ required: false })
-      }
-    })
+    getRegistrationPlanAction()
+      .then((res) => {
+        if (res.success && res.required && res.plan) {
+          setRegPlan({
+            required: true,
+            amountInr: res.plan.amountInr,
+            durationDays: res.plan.durationDays,
+            planName: res.plan.name,
+          })
+        } else {
+          setRegPlan({ required: false })
+        }
+      })
+      .finally(() => setPlanReady(true))
   }, [])
 
   const maxDob = useMemo(() => {
@@ -114,7 +117,7 @@ export function SignupForm() {
       toast.error(t("bio.uploadFailed"))
       return
     }
-    if (file.size > 30 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       toast.error(t("bio.uploadFailed"))
       return
     }
@@ -139,9 +142,13 @@ export function SignupForm() {
       const data = new FormData()
       data.append("file", photoFile)
       try {
-        await fetch("/api/profile/upload", { method: "POST", body: data })
+        const uploadRes = await fetch("/api/profile/upload", { method: "POST", body: data })
+        const uploadJson = await uploadRes.json()
+        if (!uploadRes.ok || !uploadJson.success) {
+          toast.error(uploadJson.error || t("bio.uploadFailed"))
+        }
       } catch {
-        // best-effort
+        toast.error(t("bio.uploadFailed"))
       }
     }
     clearPhoto()
@@ -185,6 +192,11 @@ export function SignupForm() {
       return
     }
 
+    if (!planReady) {
+      toast.error(t("auth.planLoading"))
+      return
+    }
+
     setErrors({})
     setPending(true)
 
@@ -223,8 +235,6 @@ export function SignupForm() {
       return
     }
 
-    setPending(false)
-
     const Razorpay = window.Razorpay
     if (!Razorpay) {
       toast.error(t("auth.paymentFailed"))
@@ -255,7 +265,10 @@ export function SignupForm() {
         await finishRegistration(phoneDigits, registerData.password)
       },
       modal: {
-        ondismiss: () => toast.info(t("auth.paymentCancelled")),
+        ondismiss: () => {
+          setPending(false)
+          toast.info(t("auth.paymentCancelled"))
+        },
       },
     })
     rzp.open()
@@ -511,12 +524,14 @@ export function SignupForm() {
           </div>
         )}
 
-        <Button type="submit" className="w-full" disabled={pending}>
-          {pending
-            ? t("auth.creating")
-            : regPlan.required
-              ? t("auth.payAndRegister")
-              : t("auth.register")}
+        <Button type="submit" className="w-full" disabled={pending || !planReady}>
+          {!planReady
+            ? t("auth.planLoading")
+            : pending
+              ? t("auth.creating")
+              : regPlan.required
+                ? t("auth.payAndRegister")
+                : t("auth.register")}
         </Button>
       </form>
     </AuthPageShell>

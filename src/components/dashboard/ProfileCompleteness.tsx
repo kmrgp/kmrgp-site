@@ -21,6 +21,8 @@ export function ProfileCompleteness({ profile }: ProfileCompletenessProps) {
   const checks: CheckItem[] = [
     { key: "dash.addPhoto", done: !!profile.imageUrl },
     { key: "bio.fullName", done: !!profile.username && profile.username.trim().length >= 2 },
+    { key: "bio.gotraSelf", done: !!profile.gotraSelf && profile.gotraSelf.trim().length > 0 },
+    { key: "profiles.district", done: !!profile.district && profile.district.trim().length > 0 },
     { key: "dash.addAddress", done: !!profile.address && profile.address !== "-" },
     { key: "dash.addFamily", done: !!(profile.fatherName && profile.motherName && profile.familyType) },
     { key: "bio.guardianMobile", done: !!profile.guardianMobile },
