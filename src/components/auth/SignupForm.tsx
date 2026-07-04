@@ -22,6 +22,7 @@ import {
 } from "@/lib/actions/payment"
 import { loginAction } from "@/lib/actions/auth"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError } from "@/lib/i18n/actionErrors"
 import { AuthPageShell } from "@/components/auth/AuthPageShell"
 import { DistrictField } from "@/components/ui/DistrictField"
 import { PhoneInput } from "@/components/ui/PhoneInput"
@@ -145,7 +146,7 @@ export function SignupForm() {
         const uploadRes = await fetch("/api/profile/upload", { method: "POST", body: data })
         const uploadJson = await uploadRes.json()
         if (!uploadRes.ok || !uploadJson.success) {
-          toast.error(uploadJson.error || t("bio.uploadFailed"))
+          toast.error(resolveActionError(uploadJson.error, t) || t("bio.uploadFailed"))
         }
       } catch {
         toast.error(t("bio.uploadFailed"))
@@ -213,7 +214,7 @@ export function SignupForm() {
       const res = await registerAction(payload)
       setPending(false)
       if (!res.success) {
-        toast.error(res.error)
+        toast.error(resolveActionError(res.error, t))
         return
       }
       await finishRegistration(phoneDigits, registerData.password)
@@ -223,7 +224,7 @@ export function SignupForm() {
     const orderRes = await createRegistrationOrderAction(payload)
     if (!orderRes.success) {
       setPending(false)
-      toast.error(orderRes.error)
+      toast.error(resolveActionError(orderRes.error, t))
       return
     }
 
@@ -259,7 +260,7 @@ export function SignupForm() {
         )
         setPending(false)
         if (!verifyRes.success) {
-          toast.error(verifyRes.error ?? t("auth.paymentFailed"))
+          toast.error(resolveActionError(verifyRes.error, t) || t("auth.paymentFailed"))
           return
         }
         await finishRegistration(phoneDigits, registerData.password)

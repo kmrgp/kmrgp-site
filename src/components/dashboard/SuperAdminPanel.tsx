@@ -16,6 +16,7 @@ import {
   demoteAdminAction,
 } from "@/lib/actions/superAdmin"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError } from "@/lib/i18n/actionErrors"
 import type { SuperAdminStats, User } from "@/types"
 
 interface AuditLog {
@@ -57,7 +58,7 @@ export function SuperAdminPanel() {
     e.preventDefault()
     const res = await createAdminAction(form.name, form.phone, form.password)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("super.created"))
@@ -69,7 +70,7 @@ export function SuperAdminPanel() {
     if (!confirm("Demote this admin to USER?")) return
     const res = await demoteAdminAction(id)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("super.demoted"))

@@ -9,6 +9,7 @@ import { SafeImage } from "@/components/ui/safe-image"
 import { PhotoLightbox } from "@/components/ui/PhotoLightbox"
 import { getContactStatusAction, requestContactAction } from "@/lib/actions/contactRequest"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError } from "@/lib/i18n/actionErrors"
 import { cn } from "@/lib/utils"
 import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
 import type { PublicProfile } from "@/types"
@@ -87,7 +88,7 @@ export function ProfileModal({
     const res = await requestContactAction(profile.userId)
     setRequesting(false)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
 

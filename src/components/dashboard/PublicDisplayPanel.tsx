@@ -32,6 +32,7 @@ import {
   getPublicDisplayStatsAction,
 } from "@/lib/actions/admin"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError } from "@/lib/i18n/actionErrors"
 import type { PublicProfile, PublicDisplayStats } from "@/types"
 
 type FilterMode = "all" | "public" | "hidden" | "seed" | "real"
@@ -83,7 +84,7 @@ export function PublicDisplayPanel() {
     const res = await setProfilePublicDisplayAction(userId, { visible })
     setBusyId(null)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(visible ? t("admin.nowPublic") : t("admin.nowHidden"))
@@ -95,7 +96,7 @@ export function PublicDisplayPanel() {
     const res = await setProfilePublicDisplayAction(userId, { featured })
     setBusyId(null)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(featured ? t("admin.nowFeatured") : t("admin.unfeatured"))
@@ -106,7 +107,7 @@ export function PublicDisplayPanel() {
     if (!confirm(t("admin.hideSeedConfirm"))) return
     const res = await hideAllSeedProfilesAction()
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("admin.hideSeedDone", { n: res.count ?? 0 }))

@@ -11,6 +11,7 @@ import { PasswordInput } from "@/components/ui/PasswordInput"
 import { loginAction } from "@/lib/actions/auth"
 import { normalizeIndianMobile, formatIndianMobile } from "@/lib/validation/phone"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError, safeRedirectPath } from "@/lib/i18n/actionErrors"
 import { AuthPageShell } from "@/components/auth/AuthPageShell"
 import { validateLoginFields, LOGIN_FIELD_ORDER } from "@/lib/validation/authForm"
 import { scrollToFirstFieldError } from "@/lib/validation/scrollToFieldError"
@@ -76,13 +77,11 @@ export function LoginForm() {
     const res = await loginAction(loginValue, password)
     setPending(false)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("auth.loginSuccess"))
-    const safeRedirect =
-      redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : "/dashboard"
-    router.push(safeRedirect)
+    router.push(safeRedirectPath(redirectTo))
     router.refresh()
   }
 

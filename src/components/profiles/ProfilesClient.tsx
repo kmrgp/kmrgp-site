@@ -15,6 +15,7 @@ import { SUGGESTED_DISTRICTS } from "@/lib/constants/districts"
 import { requestContactAction, getContactStatusesAction, getContactStatusAction } from "@/lib/actions/contactRequest"
 import { searchProfilesAction } from "@/lib/actions/profiles"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError } from "@/lib/i18n/actionErrors"
 import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
 import type { ApprovalStatus, PublicProfile, SessionUser } from "@/types"
 
@@ -128,14 +129,14 @@ export function ProfilesClient({ initialProfiles, user, approvalStatus, initialT
       const res = await searchProfilesAction(buildFilters(forPage))
       setLoading(false)
       if (!res.success) {
-        toast.error(res.error)
+        toast.error(resolveActionError(res.error, t))
         return
       }
       setResults(res.data.profiles)
       setTotal(res.data.total)
       await loadContactStatuses(res.data.profiles)
     },
-    [buildFilters, loadContactStatuses]
+    [buildFilters, loadContactStatuses, t]
   )
 
   function applySearch() {
@@ -204,7 +205,7 @@ export function ProfilesClient({ initialProfiles, user, approvalStatus, initialT
 
     const res = await requestContactAction(profile.userId)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
 

@@ -18,6 +18,7 @@ import {
 } from "@/lib/actions/interest"
 import { getContactStatusesAction, getAdminContactPhoneAction, requestContactAction, getContactStatusAction } from "@/lib/actions/contactRequest"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError } from "@/lib/i18n/actionErrors"
 import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
 
 interface InterestItem {
@@ -109,7 +110,7 @@ export function InterestsList() {
   async function accept(id: number) {
     const res = await acceptInterestAction(id)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("int.accepted"))
@@ -120,7 +121,7 @@ export function InterestsList() {
   async function decline(id: number) {
     const res = await declineInterestAction(id)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.info(t("int.declined"))
@@ -144,7 +145,7 @@ export function InterestsList() {
 
     const res = await requestContactAction(ownerId)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     setContactStatuses((prev) => ({ ...prev, [ownerId]: "PENDING" }))

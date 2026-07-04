@@ -27,6 +27,7 @@ import { PhoneInput } from "@/components/ui/PhoneInput"
 import { DistrictField } from "@/components/ui/DistrictField"
 import { FieldError } from "@/components/ui/FieldError"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError } from "@/lib/i18n/actionErrors"
 import {
   ageFromDob,
   validateProfileForm,
@@ -257,7 +258,7 @@ export function BioDataEditor({ profile, role, onProfileUpdate }: BioDataEditorP
     const res = await fetch("/api/profile/upload", { method: "POST", body: data })
     const json = await res.json()
     if (!json.success) {
-      toast.error(json.error || t("bio.uploadFailed"))
+      toast.error(resolveActionError(json.error, t))
       return
     }
     if (kind === "cast") {
@@ -349,7 +350,7 @@ export function BioDataEditor({ profile, role, onProfileUpdate }: BioDataEditorP
       toast.success(t("bio.sectionSaved"))
       router.refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("bio.uploadFailed"))
+      toast.error(err instanceof Error ? resolveActionError(err.message, t) : t("bio.uploadFailed"))
     } finally {
       setSavingSection(null)
     }
@@ -380,7 +381,7 @@ export function BioDataEditor({ profile, role, onProfileUpdate }: BioDataEditorP
       router.refresh()
       return true
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("bio.uploadFailed"))
+      toast.error(err instanceof Error ? resolveActionError(err.message, t) : t("bio.uploadFailed"))
       return false
     } finally {
       setSaving(false)
@@ -398,7 +399,7 @@ export function BioDataEditor({ profile, role, onProfileUpdate }: BioDataEditorP
       const res = await fetch("/api/profile/submit", { method: "POST" })
       const json = await res.json()
       if (!res.ok || !json.success) {
-        toast.error(json.error || t("bio.uploadFailed"))
+        toast.error(resolveActionError(json.error, t))
         return
       }
       toast.success(t("bio.submitted"))
@@ -422,7 +423,7 @@ export function BioDataEditor({ profile, role, onProfileUpdate }: BioDataEditorP
       if (updated) onProfileUpdate?.(updated)
       toast.success(nextVisible ? t("bio.shown") : t("bio.hidden"))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("bio.uploadFailed"))
+      toast.error(err instanceof Error ? resolveActionError(err.message, t) : t("bio.uploadFailed"))
     }
   }
 

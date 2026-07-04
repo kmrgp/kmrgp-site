@@ -14,6 +14,7 @@ import {
   setDefaultPlanAction,
 } from "@/lib/actions/subscription"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError } from "@/lib/i18n/actionErrors"
 
 interface PlanRow {
   id: number
@@ -85,7 +86,7 @@ export function SubscriptionPlansPanel() {
     })
     setSaving(false)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("sub.planSaved"))
@@ -96,7 +97,7 @@ export function SubscriptionPlansPanel() {
   async function toggleActive(plan: PlanRow) {
     const res = await togglePlanActiveAction(plan.id, !plan.active)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     load()
@@ -105,7 +106,7 @@ export function SubscriptionPlansPanel() {
   async function makeDefault(id: number) {
     const res = await setDefaultPlanAction(id)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("sub.defaultSet"))

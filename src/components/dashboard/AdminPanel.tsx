@@ -48,6 +48,7 @@ import {
   rejectContactRequestAction,
 } from "@/lib/actions/contactRequest"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { resolveActionError } from "@/lib/i18n/actionErrors"
 import type { PublicProfile } from "@/types"
 
 interface ContactRequest {
@@ -95,7 +96,7 @@ export function AdminPanel() {
   async function approve(id: number, options?: ApproveOptions) {
     const res = await approveUserAction(id, options)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("admin.approvedToast"))
@@ -105,7 +106,7 @@ export function AdminPanel() {
   async function reject(id: number) {
     const res = await rejectUserAction(id)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.info(t("admin.rejectedToast"))
@@ -115,7 +116,7 @@ export function AdminPanel() {
   async function remove(id: number) {
     const res = await deleteUserAction(id)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("admin.deleted"))
@@ -125,7 +126,7 @@ export function AdminPanel() {
   async function approveContact(id: number) {
     const res = await approveContactRequestAction(id)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.success(t("admin.contactApproved"))
@@ -135,7 +136,7 @@ export function AdminPanel() {
   async function rejectContact(id: number) {
     const res = await rejectContactRequestAction(id)
     if (!res.success) {
-      toast.error(res.error)
+      toast.error(resolveActionError(res.error, t))
       return
     }
     toast.info(t("admin.contactRejected"))

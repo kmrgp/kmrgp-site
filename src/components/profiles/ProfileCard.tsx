@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { SafeImage } from "@/components/ui/safe-image"
 import { PhotoLightbox } from "@/components/ui/PhotoLightbox"
 import { useLang } from "@/lib/i18n/LanguageProvider"
-import { cn } from "@/lib/utils"
 import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
 import type { PublicProfile } from "@/types"
 
@@ -36,34 +35,47 @@ export function ProfileCard({ profile, isLoggedIn, contactStatus = null, onView,
   return (
     <>
       <Card className="group mb-4 inline-block w-full break-inside-avoid overflow-hidden transition hover:-translate-y-1 hover:shadow-lg">
-        <div
-          className={cn("relative w-full bg-cream-dark", src && "cursor-zoom-in")}
-          onClick={() => src && setLightbox(true)}
-          role="button"
-          aria-label={`Zoom photo of ${profile.username}`}
-        >
-          <SafeImage
-            src={src}
-            name={profile.username ?? undefined}
-            alt={profile.username ?? ""}
-            natural
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 transition group-hover:opacity-100" />
-          {src && (
+        {src ? (
+          <button
+            type="button"
+            className="relative block w-full cursor-zoom-in border-0 bg-cream-dark p-0 text-left"
+            onClick={() => setLightbox(true)}
+            aria-label={t("card.zoomPhoto", { name: profile.username ?? "" })}
+          >
+            <SafeImage
+              src={src}
+              name={profile.username ?? undefined}
+              alt={profile.username ?? ""}
+              natural
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 transition group-hover:opacity-100" />
             <div className="pointer-events-none absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition group-hover:opacity-100">
               <ZoomIn className="h-4 w-4" />
             </div>
-          )}
-          <div className="absolute left-3 top-3 rounded-full bg-saffron px-2.5 py-1 text-[10px] font-bold text-white sm:px-3 sm:text-xs">
-            {profile.type === "GROOM" ? t("profiles.groom") : t("profiles.bride")}
-          </div>
-          {profile.visible && profile.approvalStatus === "APPROVED" && (
-            <div className="absolute right-3 top-3 rounded-full bg-maroon px-2.5 py-1 text-[10px] font-bold text-white sm:px-3 sm:text-xs">
-              {t("modal.verified")}
+            <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-saffron px-2.5 py-1 text-[10px] font-bold text-white sm:px-3 sm:text-xs">
+              {profile.type === "GROOM" ? t("profiles.groom") : t("profiles.bride")}
             </div>
-          )}
-        </div>
+            {profile.visible && profile.approvalStatus === "APPROVED" && (
+              <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-maroon px-2.5 py-1 text-[10px] font-bold text-white sm:px-3 sm:text-xs">
+                {t("modal.verified")}
+              </div>
+            )}
+          </button>
+        ) : (
+          <div className="relative w-full bg-cream-dark">
+            <SafeImage
+              src={src}
+              name={profile.username ?? undefined}
+              alt={profile.username ?? ""}
+              natural
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
+            <div className="absolute left-3 top-3 rounded-full bg-saffron px-2.5 py-1 text-[10px] font-bold text-white sm:px-3 sm:text-xs">
+              {profile.type === "GROOM" ? t("profiles.groom") : t("profiles.bride")}
+            </div>
+          </div>
+        )}
         <CardContent className="flex flex-col p-4 sm:p-5">
           <h3 className="mb-2 truncate font-heading text-lg font-bold text-maroon sm:text-xl">{profile.username}</h3>
           <div className="mb-3 flex flex-wrap gap-1.5 sm:gap-2">

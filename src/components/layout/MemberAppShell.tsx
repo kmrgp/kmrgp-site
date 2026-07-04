@@ -16,7 +16,7 @@ interface MemberAppShellProps {
   pendingInterests?: number
 }
 
-function useMemberNavItems(role: Role, pendingInterests: number) {
+function useMemberNavItems(role: Role, pendingInterests: number, compact = false) {
   const { t } = useLang()
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN"
   const isSuperAdmin = role === "SUPER_ADMIN"
@@ -43,7 +43,7 @@ function useMemberNavItems(role: Role, pendingInterests: number) {
   if (isAdmin) {
     items.push({ id: "admin", label: t("dash.navAdmin"), icon: Shield, href: "/dashboard?tab=admin" })
   }
-  if (isSuperAdmin) {
+  if (isSuperAdmin && !compact) {
     items.push({ id: "superadmin", label: t("dash.navSuper"), icon: Crown, href: "/dashboard?tab=superadmin" })
   }
 
@@ -131,8 +131,10 @@ function NavLinkItem({
 
 export function MemberAppShell({ children, role, pendingInterests = 0 }: MemberAppShellProps) {
   const { t } = useLang()
-  const items = useMemberNavItems(role, pendingInterests)
+  const sidebarItems = useMemberNavItems(role, pendingInterests, false)
+  const bottomItems = useMemberNavItems(role, pendingInterests, true)
   const active = useActiveNav()
+  const bottomActive = active === "superadmin" ? "admin" : active
 
   return (
     <div className="flex w-full min-w-0">
@@ -142,7 +144,7 @@ export function MemberAppShell({ children, role, pendingInterests = 0 }: MemberA
           <p className="mt-0.5 text-xs text-muted-foreground">{t("member.shellSub")}</p>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto p-2" aria-label={t("nav.navigation")}>
-          {items.map((item) => (
+          {sidebarItems.map((item) => (
             <NavLinkItem key={item.id} item={item} isActive={active === item.id} variant="sidebar" />
           ))}
         </nav>
@@ -164,9 +166,9 @@ export function MemberAppShell({ children, role, pendingInterests = 0 }: MemberA
         aria-label={t("nav.navigation")}
       >
         <ul className="mx-auto flex w-full min-w-0 max-w-lg items-stretch justify-around px-1 pt-1">
-          {items.map((item) => (
+          {bottomItems.map((item) => (
             <li key={item.id} className="min-w-0 flex-1">
-              <NavLinkItem item={item} isActive={active === item.id} variant="bottom" />
+              <NavLinkItem item={item} isActive={bottomActive === item.id} variant="bottom" />
             </li>
           ))}
         </ul>
