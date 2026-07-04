@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Camera, Upload, X } from "lucide-react"
@@ -10,6 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { loginAction, registerAction } from "@/lib/actions/auth"
+import {
+  getRegistrationPlanAction,
+  createRegistrationOrderAction,
+  verifyRegistrationPaymentAction,
+} from "@/lib/actions/payment"
 import { useLang } from "@/lib/i18n/LanguageProvider"
 
 interface AuthModalProps {
@@ -42,6 +47,28 @@ export function AuthModal({ open, onOpenChange, defaultTab = "login" }: AuthModa
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const [regPlan, setRegPlan] = useState<{
+    required: boolean
+    amountInr?: number
+    durationDays?: number
+    planName?: string
+  }>({ required: false })
+
+  useEffect(() => {
+    if (!open) return
+    getRegistrationPlanAction().then((res) => {
+      if (res.success && res.required && res.plan) {
+        setRegPlan({
+          required: true,
+          amountInr: res.plan.amountInr,
+          durationDays: res.plan.durationDays,
+          planName: res.plan.name,
+        })
+      } else {
+        setRegPlan({ required: false })
+      }
+    })
+  }, [open, tab])
 
   function pickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -80,41 +107,114 @@ export function AuthModal({ open, onOpenChange, defaultTab = "login" }: AuthModa
     router.refresh()
   }
 
-  async function handleRegister(e: React.FormEvent) {
-    e.preventDefault()
-    setPending(true)
-
-    // 1. Register the user + profile
-    const res = await registerAction({
-      ...registerData,
-      profileType: registerData.gender === "Bride" ? "BRIDE" : "GROOM",
-    })
-
-    if (!res.success) {
-      setPending(false)
-      toast.error(res.error)
-      return
-    }
-
-    // 2. If a photo was chosen, auto-login then upload via the authed route.
+  async function finishRegistration(phone: string, password: string) {
     if (photoFile) {
-      const loginRes = await loginAction(registerData.phone, registerData.password)
-      if (loginRes.success && photoFile) {
+      const loginRes = await loginAction(phone, password)
+      if (loginRes.success) {
         const data = new FormData()
         data.append("file", photoFile)
         try {
           await fetch("/api/profile/upload", { method: "POST", body: data })
         } catch {
-          // best-effort; profile is already created
+          // best-effort
         }
       }
       clearPhoto()
     }
 
-    setPending(false)
     toast.success(t("auth.regSuccess"))
     setTab("login")
-    setLoginPhone(registerData.phone)
+    setLoginPhone(phone)
+  }
+
+  function loadRazorpayScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (window.Razorpay) {
+        resolve()
+        return
+      }
+      const script = document.createElement("script")
+      script.src = "https://checkout.razorpay.com/v1/checkout.js"
+      script.onload = () => resolve()
+      script.onerror = () => reject(new Error("Could not load payment gateway"))
+      document.body.appendChild(script)
+    })
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault()
+    setPending(true)
+
+    const profileType = registerData.gender === "Bride" ? "BRIDE" : "GROOM"
+    const payload = {
+      ...registerData,
+      phone: registerData.phone.replace(/\D/g, ""),
+      profileType: profileType as "GROOM" | "BRIDE",
+    }
+
+    if (!regPlan.required) {
+      const res = await registerAction(payload)
+      setPending(false)
+      if (!res.success) {
+        toast.error(res.error)
+        return
+      }
+      await finishRegistration(registerData.phone, registerData.password)
+      return
+    }
+
+    const orderRes = await createRegistrationOrderAction(payload)
+    if (!orderRes.success) {
+      setPending(false)
+      toast.error(orderRes.error)
+      return
+    }
+
+    try {
+      await loadRazorpayScript()
+    } catch {
+      setPending(false)
+      toast.error(t("auth.paymentFailed"))
+      return
+    }
+
+    setPending(false)
+
+    const Razorpay = window.Razorpay
+    if (!Razorpay) {
+      toast.error(t("auth.paymentFailed"))
+      return
+    }
+
+    const rzp = new Razorpay({
+      key: orderRes.keyId,
+      amount: orderRes.amountPaise,
+      currency: "INR",
+      name: "Kshatriya Mewada Rajput Parivar",
+      description: orderRes.planName,
+      order_id: orderRes.orderId,
+      prefill: { name: registerData.username, contact: registerData.phone },
+      theme: { color: "#800020" },
+      handler: async (response) => {
+        setPending(true)
+        const verifyRes = await verifyRegistrationPaymentAction(
+          response.razorpay_order_id,
+          response.razorpay_payment_id,
+          response.razorpay_signature
+        )
+        setPending(false)
+        if (!verifyRes.success) {
+          toast.error(verifyRes.error ?? t("auth.paymentFailed"))
+          return
+        }
+        await finishRegistration(registerData.phone, registerData.password)
+        onOpenChange(false)
+      },
+      modal: {
+        ondismiss: () => toast.info(t("auth.paymentCancelled")),
+      },
+    })
+    rzp.open()
   }
 
   return (
@@ -246,7 +346,25 @@ export function AuthModal({ open, onOpenChange, defaultTab = "login" }: AuthModa
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={pending}>{pending ? t("auth.creating") : t("auth.register")}</Button>
+              {regPlan.required && regPlan.amountInr != null && (
+                <div className="rounded-xl border border-saffron/40 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {t("auth.payToRegister", {
+                    amount: `₹${regPlan.amountInr}`,
+                    duration: String(regPlan.durationDays ?? 365),
+                  })}
+                  {regPlan.planName && (
+                    <span className="mt-1 block font-semibold">{regPlan.planName}</span>
+                  )}
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={pending}>
+                {pending
+                  ? t("auth.creating")
+                  : regPlan.required
+                    ? t("auth.payAndRegister")
+                    : t("auth.register")}
+              </Button>
             </form>
           </TabsContent>
         </Tabs>

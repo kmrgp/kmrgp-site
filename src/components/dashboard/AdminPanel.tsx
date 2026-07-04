@@ -15,6 +15,7 @@ import {
   Search,
   RotateCcw,
   LayoutGrid,
+  CreditCard,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -31,6 +32,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { AdminReviewModal } from "@/components/dashboard/AdminReviewModal"
 import { ConfirmDeleteDialog } from "@/components/dashboard/ConfirmDeleteDialog"
 import { PublicDisplayPanel } from "@/components/dashboard/PublicDisplayPanel"
+import { SubscriptionPlansPanel } from "@/components/dashboard/SubscriptionPlansPanel"
 import {
   listPendingRequestsAction,
   listRejectedRequestsAction,
@@ -211,6 +213,9 @@ export function AdminPanel() {
           <TabsTrigger value="public">
             <LayoutGrid className="mr-1 h-4 w-4" /> {t("admin.publicTab")}
           </TabsTrigger>
+          <TabsTrigger value="plans">
+            <CreditCard className="mr-1 h-4 w-4" /> {t("sub.tab")}
+          </TabsTrigger>
         </TabsList>
 
         {/* All Members */}
@@ -387,6 +392,10 @@ export function AdminPanel() {
 
         <TabsContent value="public">
           <PublicDisplayPanel />
+        </TabsContent>
+
+        <TabsContent value="plans">
+          <SubscriptionPlansPanel />
         </TabsContent>
       </Tabs>
 

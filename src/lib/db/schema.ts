@@ -22,6 +22,8 @@ export const approvalStatusEnum = pgEnum("approval_status", [
 export const actionTypeEnum = pgEnum("action_type", ["APPROVE", "REJECT", "DELETE"])
 export const interestStatusEnum = pgEnum("interest_status", ["PENDING", "ACCEPTED", "DECLINED"])
 export const contactRequestStatusEnum = pgEnum("contact_request_status", ["PENDING", "APPROVED", "REJECTED"])
+export const paymentOrderStatusEnum = pgEnum("payment_order_status", ["PENDING", "PAID", "FAILED", "EXPIRED"])
+export const subscriptionStatusEnum = pgEnum("subscription_status", ["ACTIVE", "EXPIRED", "CANCELLED"])
 
 export const users = pgTable(
   "users",
@@ -158,6 +160,78 @@ export const contactRequests = pgTable(
   })
 )
 
+export const subscriptionPlans = pgTable(
+  "subscription_plans",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 120 }).notNull(),
+    description: text("description"),
+    /** Whole rupees (e.g. 501). Charged as amount * 100 paise at checkout. */
+    amountInr: integer("amount_inr").notNull(),
+    durationDays: integer("duration_days").notNull().default(365),
+    active: boolean("active").notNull().default(true),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    activeIdx: index("subscription_plans_active_idx").on(table.active),
+    defaultIdx: index("subscription_plans_default_idx").on(table.isDefault),
+  })
+)
+
+export const paymentOrders = pgTable(
+  "payment_orders",
+  {
+    id: serial("id").primaryKey(),
+    razorpayOrderId: varchar("razorpay_order_id", { length: 100 }).notNull().unique(),
+    planId: integer("plan_id")
+      .notNull()
+      .references(() => subscriptionPlans.id),
+    amountPaise: integer("amount_paise").notNull(),
+    status: paymentOrderStatusEnum("status").notNull().default("PENDING"),
+    /** JSON blob of registration fields — consumed after successful payment. */
+    registrationPayload: text("registration_payload").notNull(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+  },
+  (table) => ({
+    statusIdx: index("payment_orders_status_idx").on(table.status),
+    razorpayIdx: index("payment_orders_razorpay_idx").on(table.razorpayOrderId),
+  })
+)
+
+export const profileSubscriptions = pgTable(
+  "profile_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    planId: integer("plan_id")
+      .notNull()
+      .references(() => subscriptionPlans.id),
+    paymentOrderId: integer("payment_order_id").references(() => paymentOrders.id, {
+      onDelete: "set null",
+    }),
+    razorpayPaymentId: varchar("razorpay_payment_id", { length: 100 }),
+    status: subscriptionStatusEnum("status").notNull().default("ACTIVE"),
+    amountPaidPaise: integer("amount_paid_paise").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdx: index("profile_subscriptions_user_idx").on(table.userId),
+    statusIdx: index("profile_subscriptions_status_idx").on(table.status),
+    expiresIdx: index("profile_subscriptions_expires_idx").on(table.expiresAt),
+  })
+)
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Profile = typeof profiles.$inferSelect
@@ -168,3 +242,7 @@ export type Interest = typeof interests.$inferSelect
 export type NewInterest = typeof interests.$inferInsert
 export type ContactRequest = typeof contactRequests.$inferSelect
 export type NewContactRequest = typeof contactRequests.$inferInsert
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect
+export type NewSubscriptionPlan = typeof subscriptionPlans.$inferInsert
+export type PaymentOrder = typeof paymentOrders.$inferSelect
+export type ProfileSubscription = typeof profileSubscriptions.$inferSelect
