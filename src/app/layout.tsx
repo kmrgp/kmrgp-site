@@ -1,14 +1,26 @@
 import type { Metadata } from "next"
-import { Inter, Playfair_Display } from "next/font/google"
+import { Inter, Playfair_Display, Tiro_Devanagari_Hindi } from "next/font/google"
 import { cookies } from "next/headers"
 import "./globals.css"
 import AppProviders from "@/components/providers/AppProviders"
 import { getLangFromCookies } from "@/lib/i18n/server"
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+})
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
+  weight: ["600", "700", "800"],
+  display: "swap",
+})
+const tiroHindi = Tiro_Devanagari_Hindi({
+  weight: "400",
+  subsets: ["devanagari", "latin"],
+  variable: "--font-hindi",
+  display: "swap",
 })
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kmrgp.vercel.app"
@@ -59,7 +71,10 @@ export default async function RootLayout({
   const lang = getLangFromCookies(cookieStore.get?.("lang")?.value ?? null)
 
   return (
-    <html lang={lang} className={`${inter.variable} ${playfair.variable} ${lang === "hi" ? "lang-hi" : ""}`}>
+    <html
+      lang={lang}
+      className={`${inter.variable} ${playfair.variable} ${tiroHindi.variable} ${lang === "hi" ? "lang-hi" : ""}`}
+    >
       <body className="font-sans">
         <AppProviders initialLang={lang}>{children}</AppProviders>
       </body>

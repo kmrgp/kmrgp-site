@@ -25,8 +25,8 @@ export function ProfileCard({ profile, isLoggedIn, onView, onRequestContact }: P
     <>
       <Card className="overflow-hidden transition hover:-translate-y-1 hover:shadow-lg">
         <div
-          className="relative h-64 cursor-zoom-in"
-          onClick={() => setLightbox(true)}
+          className={`relative h-64 ${src ? "cursor-zoom-in" : ""}`}
+          onClick={() => src && setLightbox(true)}
           role="button"
           aria-label={`Zoom photo of ${profile.username}`}
         >
@@ -102,12 +102,14 @@ export function ProfileCard({ profile, isLoggedIn, onView, onRequestContact }: P
         </CardContent>
       </Card>
 
-      <PhotoLightbox
-        open={lightbox}
-        onOpenChange={setLightbox}
-        src={src}
-        name={profile.username ?? undefined}
-      />
+      {src && (
+        <PhotoLightbox
+          open={lightbox}
+          onOpenChange={setLightbox}
+          src={src}
+          name={profile.username ?? undefined}
+        />
+      )}
     </>
   )
 }

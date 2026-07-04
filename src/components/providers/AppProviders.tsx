@@ -3,6 +3,8 @@
 import type { ReactNode } from "react"
 import { Toaster } from "sonner"
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider"
+import { LangAnimatedShell } from "@/components/layout/LangAnimatedShell"
+import { ScrollLockFix } from "@/components/layout/ScrollLockFix"
 import type { Lang } from "@/lib/i18n/dictionary"
 
 export default function AppProviders({
@@ -14,7 +16,8 @@ export default function AppProviders({
 }) {
   return (
     <LanguageProvider initialLang={initialLang}>
-      {children}
+      <ScrollLockFix />
+      <LangAnimatedShell>{children}</LangAnimatedShell>
       <Toaster
         position="top-center"
         toastOptions={{

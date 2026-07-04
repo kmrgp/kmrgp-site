@@ -1,8 +1,9 @@
 "use client"
 
-import { Home, Lock, Heart, Sparkles, Eye, Shield, Crown } from "lucide-react"
 import Link from "next/link"
+import { Heart, Sparkles, Eye, Shield, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { AuthGatePanel } from "@/components/auth/AuthGatePanel"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { BioDataEditor } from "@/components/dashboard/BioDataEditor"
@@ -103,24 +104,14 @@ export function DashboardLocked({ kind }: { kind: "noSession" | "notFound" | "pe
   if (kind === "noSession") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-cream px-6 pt-[76px]">
-        <div className="max-w-md rounded-3xl border-4 border-double border-maroon bg-white p-10 text-center shadow-lg">
-          <Lock className="mx-auto mb-4 h-12 w-12 text-maroon" />
-          <h2 className="mb-2 font-heading text-2xl font-bold text-maroon">{t("dash.accessOnly")}</h2>
-          <p className="mb-6 text-muted-foreground">{t("dash.accessDesc")}</p>
-          <Button asChild className="w-full">
-            <Link href="/"><Home className="mr-2 h-4 w-4" /> {t("dash.goHome")}</Link>
-          </Button>
-        </div>
+        <AuthGatePanel />
       </main>
     )
   }
   if (kind === "notFound") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-cream px-6 pt-[76px]">
-        <Card className="max-w-md p-8 text-center">
-          <h2 className="font-heading text-xl font-bold text-maroon">{t("dash.notFound")}</h2>
-          <p className="mt-2 text-muted-foreground">{t("dash.registerToCreate")}</p>
-        </Card>
+        <AuthGatePanel />
       </main>
     )
   }

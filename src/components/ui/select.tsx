@@ -16,7 +16,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex min-h-[52px] w-full items-center justify-between rounded-2xl border-2 border-gold-hover bg-white px-5 py-3 text-base focus:border-saffron focus:outline-none focus:ring-4 focus:ring-saffron-light disabled:cursor-not-allowed disabled:opacity-50",
+      "flex min-h-[52px] w-full min-w-0 items-center justify-between rounded-2xl border-2 border-gold-hover bg-white px-4 py-3 text-base focus:border-saffron focus:outline-none focus:ring-4 focus:ring-saffron-light disabled:cursor-not-allowed disabled:opacity-50 sm:px-5",
       className
     )}
     {...props}
@@ -37,14 +37,17 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-2xl border border-gold-light bg-white text-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-        position === "popper" && "data-[side=bottom]:translate-y-1",
+        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-2xl border-2 border-gold-light bg-cream text-foreground shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        position === "popper" &&
+          "min-w-[var(--radix-select-trigger-width)] data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1",
         className
       )}
       position={position}
       {...props}
     >
-      <SelectPrimitive.Viewport className="p-1">{children}</SelectPrimitive.Viewport>
+      <SelectPrimitive.Viewport className="kmrgp-scroll max-h-96 overflow-y-auto p-1.5">
+        {children}
+      </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 ))
@@ -57,14 +60,14 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-xl py-2.5 pl-8 pr-2 text-sm font-semibold outline-none focus:bg-maroon-light focus:text-maroon data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-pointer select-none items-center rounded-xl py-3 pl-9 pr-3 text-base font-medium outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-saffron-light data-[highlighted]:text-maroon data-[state=checked]:bg-maroon-light data-[state=checked]:font-semibold data-[state=checked]:text-maroon",
       className
     )}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span className="absolute left-2.5 flex h-4 w-4 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <Check className="h-4 w-4 text-maroon" />
       </SelectPrimitive.ItemIndicator>
     </span>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

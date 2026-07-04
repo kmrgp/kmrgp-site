@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@100..900&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap');
-
 @layer base {
   :root {
     --background: 40 33% 98%;
@@ -26,6 +24,10 @@
     --input: 42 30% 80%;
     --ring: 24 100% 50%;
     --radius: 0.75rem;
+    --scrollbar-track: #f0e9d8;
+    --scrollbar-thumb: #c5a55a;
+    --scrollbar-thumb-hover: #800020;
+    --scrollbar-size: 7px;
   }
 }
 
@@ -34,15 +36,43 @@
     @apply border-border;
   }
   html {
-    /* Reserve a stable scrollbar gutter so content never shifts horizontally
-       when navigating between short (no scrollbar) and long (scrollable) pages. */
+    color-scheme: light;
     scrollbar-gutter: stable;
   }
-  body {
-    @apply bg-cream text-foreground antialiased;
+  @supports not (scrollbar-gutter: stable) {
+    html {
+      overflow-y: scroll;
+    }
   }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-heading text-maroon;
+  body {
+    @apply bg-cream font-sans text-body text-foreground antialiased;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+  h1 {
+    @apply font-heading text-h1-lg text-maroon;
+    font-feature-settings: "kern" 1, "liga" 1, "dlig" 1;
+  }
+  h2 {
+    @apply font-heading text-h2-lg text-maroon;
+    font-feature-settings: "kern" 1, "liga" 1, "dlig" 1;
+  }
+  h3 {
+    @apply font-heading text-h3 text-maroon;
+    font-feature-settings: "kern" 1, "liga" 1, "dlig" 1;
+  }
+  h4, h5, h6 {
+    @apply font-heading text-h3 text-maroon;
+    font-feature-settings: "kern" 1, "liga" 1, "dlig" 1;
+  }
+  p {
+    @apply text-body leading-relaxed;
+  }
+  .lang-hi body,
+  .lang-hi p,
+  .lang-hi .type-body,
+  .lang-hi .type-body-sm,
+  .lang-hi .type-stat-label {
+    line-height: 1.7;
   }
   .lang-hi *, [lang="hi"] {
     @apply font-hindi;
@@ -50,6 +80,107 @@
 }
 
 @layer components {
+  /* ---- Global typography scale ---- */
+  .type-display {
+    @apply font-heading text-display-sm font-bold sm:text-display md:text-display-lg;
+  }
+  .type-h1 {
+    @apply font-heading text-h1 font-bold sm:text-h1-lg;
+  }
+  .type-h2 {
+    @apply font-heading text-h2 font-bold sm:text-h2-lg;
+  }
+  .type-h3 {
+    @apply font-heading text-h3 font-bold;
+  }
+  .type-eyebrow {
+    @apply text-caption font-bold uppercase tracking-heritage text-saffron;
+  }
+  .type-body-lg {
+    @apply text-body-lg;
+  }
+  .type-body {
+    @apply text-body;
+  }
+  .type-body-sm {
+    @apply text-body-sm;
+  }
+  .type-caption {
+    @apply text-caption text-muted-foreground;
+  }
+  .type-stat {
+    @apply font-heading text-stat font-bold tabular-nums text-gold-bright sm:text-stat-lg;
+  }
+  .type-stat-label {
+    @apply text-stat-label font-medium;
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  /* ---- Micro-interactions ---- */
+  .hover-lift {
+    @apply transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md;
+  }
+  .press-scale {
+    @apply transition-transform duration-150 active:scale-[0.98];
+  }
+
+  /* Hero: layered wash so illustration glows through while text stays crisp */
+  .hero-overlay {
+    background:
+      radial-gradient(ellipse 90% 70% at 50% 35%, rgba(255, 120, 40, 0.22) 0%, transparent 55%),
+      radial-gradient(ellipse 120% 80% at 50% 100%, rgba(40, 0, 12, 0.75) 0%, transparent 60%),
+      linear-gradient(
+        180deg,
+        rgba(50, 0, 14, 0.35) 0%,
+        rgba(80, 0, 22, 0.5) 42%,
+        rgba(35, 0, 10, 0.82) 100%
+      ),
+      linear-gradient(
+        90deg,
+        rgba(45, 0, 12, 0.45) 0%,
+        transparent 18%,
+        transparent 82%,
+        rgba(45, 0, 12, 0.45) 100%
+      );
+  }
+
+  .hero-headline {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-shadow:
+      0 2px 28px rgba(0, 0, 0, 0.45),
+      0 1px 3px rgba(0, 0, 0, 0.3);
+    text-wrap: balance;
+    white-space: pre-line;
+  }
+
+  .lang-hi .hero-headline {
+    line-height: 1.45;
+    letter-spacing: 0;
+  }
+
+  .hero-subtitle {
+    @apply font-sans font-normal;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  .hero-trust-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border bg-black/20 px-3 py-1.5 text-xs font-semibold backdrop-blur-sm;
+    border-color: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .hero-stat-card {
+    @apply rounded-2xl border p-4 shadow-hero backdrop-blur-md;
+    border-color: rgba(255, 255, 255, 0.22);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 100%);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
   .rajput-border {
     background-image: repeating-linear-gradient(
       90deg,
@@ -75,10 +206,56 @@
   .input-style {
     @apply flex min-h-[52px] w-full rounded-2xl border-2 border-gold-hover bg-white px-4 py-3 text-base transition-colors focus:border-saffron focus:outline-none focus:ring-4 focus:ring-saffron-light;
   }
+
+  /* Themed scrollbars — page, modals, tables, selects */
+  .kmrgp-scroll,
+  html,
+  body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  .kmrgp-scroll::-webkit-scrollbar,
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  .kmrgp-scroll::-webkit-scrollbar-track,
+  html::-webkit-scrollbar-track,
+  body::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 999px;
+  }
+
+  .kmrgp-scroll::-webkit-scrollbar-thumb,
+  html::-webkit-scrollbar-thumb,
+  body::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #d4b96a 0%, var(--scrollbar-thumb) 100%);
+    border-radius: 999px;
+    border: 2px solid var(--scrollbar-track);
+  }
+
+  .kmrgp-scroll::-webkit-scrollbar-thumb:hover,
+  html::-webkit-scrollbar-thumb:hover,
+  body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #ff8c2a 0%, var(--scrollbar-thumb-hover) 100%);
+  }
+
+  .kmrgp-scroll::-webkit-scrollbar-corner,
+  html::-webkit-scrollbar-corner,
+  body::-webkit-scrollbar-corner {
+    background: var(--scrollbar-track);
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+body[data-scroll-locked] {
+  overflow: hidden !important;
 }

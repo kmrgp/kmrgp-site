@@ -64,7 +64,7 @@ export function ProfileModal({ profile, open, onOpenChange, isLoggedIn }: Profil
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto overscroll-contain pr-1">
           <DialogTitle className="sr-only">{profile.username ?? ""}</DialogTitle>
           <DialogDescription className="sr-only">{t("card.view")} — {profile.username}</DialogDescription>
 
@@ -174,7 +174,9 @@ export function ProfileModal({ profile, open, onOpenChange, isLoggedIn }: Profil
         </DialogContent>
       </Dialog>
 
-      <PhotoLightbox open={lightbox} onOpenChange={setLightbox} src={src} name={profile.username ?? undefined} />
+      {src && (
+        <PhotoLightbox open={lightbox} onOpenChange={setLightbox} src={src} name={profile.username ?? undefined} />
+      )}
     </>
   )
 }

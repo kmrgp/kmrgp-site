@@ -33,8 +33,10 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      onOpenAutoFocus={(e) => e.preventDefault()}
+      onCloseAutoFocus={(e) => e.preventDefault()}
       className={cn(
-        "fixed inset-y-0 right-0 z-50 h-full w-3/4 border-l-4 border-gold bg-cream p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+        "fixed inset-y-0 right-0 z-50 h-full w-3/4 overflow-y-auto overscroll-contain border-l-4 border-gold bg-cream p-6 shadow-lg duration-200 kmrgp-scroll data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
         className
       )}
       {...props}

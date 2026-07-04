@@ -22,7 +22,7 @@ export const dict = {
   "nav.matches": { en: "Find Matches", hi: "जीवनसाथी खोजें" },
   "nav.dashboard": { en: "My Dashboard", hi: "मेरा डैशबोर्ड" },
   "nav.login": { en: "Login", hi: "लॉगिन" },
-  "nav.join": { en: "Join Free", hi: "निःशुल्क जुड़ें" },
+  "nav.join": { en: "Join Parivar", hi: "परिवार से जुड़ें" },
   "nav.joinParivar": { en: "Join Parivar", hi: "परिवार से जुड़ें" },
   "nav.logout": { en: "Log Out", hi: "लॉगआउट" },
   "nav.navigation": { en: "Navigation", hi: "नेविगेशन" },
@@ -30,8 +30,10 @@ export const dict = {
   "lang.aria": { en: "Switch language", hi: "भाषा बदलें" },
 
   // ---- Home / hero ----
-  "home.badge": { en: "Exclusively for Kshatriya Mewada Rajput Families", hi: "केवल क्षत्रिय मेवाड़ा राजपूत परिवारों के लिए" },
-  "home.title": { en: "Where Sacred Lineage Meets Lifelong Union", hi: "जहाँ पवित्र वंश मिलता है आजीवन संग से" },
+  "home.title": {
+    en: "Where Sacred Lineage Meets Lifelong Union",
+    hi: "यहाँ पवित्र वंश\nआजीवन संग से मिलता है",
+  },
   "home.subtitle": {
     en: "India's most trusted matrimony community for Mewada & Rajput families — built on Gotra verification, elder oversight, and timeless values.",
     hi: "मेवाड़ा एवं राजपूत परिवारों के लिए भारत का सबसे भरोसेमंद वैवाहिक समुदाय — गोत्र सत्यापन, बुजुर्ग निगरानी, और शाश्वत मूल्यों पर आधारित।",
@@ -166,6 +168,12 @@ export const dict = {
   "auth.gotraMother": { en: "Gotra (Mother)", hi: "गोत्र (माता)" },
   "auth.dob": { en: "Date of Birth", hi: "जन्म तिथि" },
   "auth.district": { en: "District", hi: "ज़िला" },
+  "auth.districtPlaceholder": { en: "Type or select your district", hi: "अपना ज़िला लिखें या चुनें" },
+  "auth.districtUseCustom": { en: 'Use "{name}"', hi: '"{name}" उपयोग करें' },
+  "auth.districtRequired": {
+    en: "Please enter your district.",
+    hi: "कृपया अपना ज़िला दर्ज करें।",
+  },
   "auth.education": { en: "Education", hi: "शिक्षा" },
   "auth.profession": { en: "Profession", hi: "पेशा" },
   "auth.setPassword": { en: "Set Password", hi: "पासवर्ड सेट करें" },
@@ -173,10 +181,20 @@ export const dict = {
   "auth.creating": { en: "Creating...", hi: "बन रहा है..." },
   "auth.loginSuccess": { en: "Login successful!", hi: "लॉगिन सफल!" },
   "auth.regSuccess": { en: "Registration successful! You may now login.", hi: "पंजीकरण सफल! अब आप लॉगिन कर सकते हैं।" },
+  "auth.switchToSignup": { en: "New here? Join Parivar →", hi: "नए हैं? परिवार से जुड़ें →" },
+  "auth.switchToLogin": { en: "Already registered? Login →", hi: "पहले से पंजीकृत? लॉगिन करें →" },
   "auth.photo": { en: "Profile Photo", hi: "प्रोफाइल फ़ोटो" },
-  "auth.photoHint": { en: "Add a clear photo (optional). You can change it later.", hi: "एक स्पष्ट फ़ोटो जोड़ें (वैकल्पिक)। बाद में बदला जा सकता है।" },
+  "auth.photoHint": {
+    en: "Add a clear face photo. Required for profile verification.",
+    hi: "एक स्पष्ट चेहरे की फ़ोटो जोड़ें। प्रोफाइल सत्यापन के लिए अनिवार्य।",
+  },
+  "auth.photoRequired": {
+    en: "Please upload a profile photo to continue.",
+    hi: "जारी रखने के लिए प्रोफाइल फ़ोटो अपलोड करें।",
+  },
   "auth.photoPick": { en: "Choose Photo", hi: "फ़ोटो चुनें" },
   "auth.photoChange": { en: "Change Photo", hi: "फ़ोटो बदलें" },
+  "auth.photoRemove": { en: "Remove", hi: "हटाएँ" },
   "auth.photoUploading": { en: "Uploading photo...", hi: "फ़ोटो अपलोड हो रही है..." },
 
   // ---- Dashboard ----
@@ -191,7 +209,10 @@ export const dict = {
   "dash.tabAdmin": { en: "Admin Controls", hi: "एडमिन नियंत्रण" },
   "dash.tabSuperAdmin": { en: "Super Admin", hi: "सुपर एडमिन" },
   "dash.accessOnly": { en: "Verified Access Only", hi: "केवल सत्यापित पहुँच" },
-  "dash.accessDesc": { en: "This dashboard is reserved for verified family members. Please log in from the home page.", hi: "यह डैशबोर्ड सत्यापित परिवार सदस्यों के लिए है। कृपया होम पेज से लॉगिन करें।" },
+  "dash.accessDesc": {
+    en: "Log in or join the parivar to access your dashboard and verified profiles.",
+    hi: "अपना डैशबोर्ड और सत्यापित प्रोफाइल देखने के लिए लॉगिन करें या परिवार से जुड़ें।",
+  },
   "dash.goHome": { en: "Go to Home", hi: "होम पर जाएँ" },
   "dash.notFound": { en: "Profile Not Found", hi: "प्रोफाइल नहीं मिली" },
   "dash.registerToCreate": { en: "Please register to create a profile.", hi: "प्रोफाइल बनाने के लिए पंजीकरण करें।" },

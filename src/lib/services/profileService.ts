@@ -391,10 +391,12 @@ export async function listFeaturedProfiles(limit = 3): Promise<PublicProfile[]> 
     .where(and(baseWhere, eq(profiles.featured, true)))
     .orderBy(desc(profiles.updatedAt))
 
-  const picked = featuredRows.map(({ users: userRow, profiles: profile }) => ({
-    ...toPublicProfile(userRow, profile),
-    age: estimateAge(profile.dob),
-  }))
+  const picked = featuredRows
+    .map(({ users: userRow, profiles: profile }) => ({
+      ...toPublicProfile(userRow, profile),
+      age: estimateAge(profile.dob),
+    }))
+    .filter((p) => p.imageUrl)
 
   if (picked.length >= limit) {
     cacheSet(FEATURED_PROFILES_KEY, picked, 1000 * 60 * 2)
@@ -416,7 +418,7 @@ export async function listFeaturedProfiles(limit = 3): Promise<PublicProfile[]> 
     }))
     .filter((p) => !seen.has(p.userId))
 
-  const result = [...picked, ...filler].slice(0, limit)
+  const result = [...picked, ...filler].filter((p) => p.imageUrl).slice(0, limit)
   cacheSet(FEATURED_PROFILES_KEY, result, 1000 * 60 * 2)
   return result
 }

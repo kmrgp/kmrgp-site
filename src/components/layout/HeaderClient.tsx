@@ -1,11 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
-import { Menu, X, User } from "lucide-react"
+import { Menu, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet"
-import { AuthModal } from "@/components/auth/AuthModal"
 import { LanguageToggle } from "@/components/layout/LanguageToggle"
 import { NotificationBadge } from "@/components/layout/NotificationBadge"
 import { logoutAction } from "@/lib/actions/auth"
@@ -18,30 +16,20 @@ interface HeaderClientProps {
 
 export function HeaderClient({ session }: HeaderClientProps) {
   const { t } = useLang()
-  const [authOpen, setAuthOpen] = useState(false)
-  const [authTab, setAuthTab] = useState<"login" | "register">("login")
-
-  const openLogin = () => {
-    setAuthTab("login")
-    setAuthOpen(true)
-  }
-
-  const openRegister = () => {
-    setAuthTab("register")
-    setAuthOpen(true)
-  }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-gold-light bg-cream/97 backdrop-blur-md shadow-sm">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-gold/20 bg-white/95 backdrop-blur-md shadow-sm">
       <div className="rajput-border" />
-      <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-6">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-gold bg-gradient-to-br from-maroon to-saffron font-heading text-xl font-extrabold text-white">
+      <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Link href="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gold bg-gradient-to-br from-maroon to-saffron font-heading text-lg font-extrabold text-white shadow-md sm:h-11 sm:w-11 sm:text-xl">
             K
           </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-base font-bold text-maroon">{t("brand.name")}</span>
-            <span className="text-[10.5px] font-bold uppercase tracking-widest text-saffron">{t("brand.tagline")}</span>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate font-heading text-sm font-bold text-maroon sm:text-base">{t("brand.name")}</span>
+            <span className="truncate text-[9px] font-bold uppercase tracking-heritage text-saffron sm:text-[10.5px]">
+              {t("brand.tagline")}
+            </span>
           </div>
         </Link>
 
@@ -77,8 +65,12 @@ export function HeaderClient({ session }: HeaderClientProps) {
             </>
           ) : (
             <>
-              <Button variant="outline" size="sm" onClick={openLogin}>{t("nav.login")}</Button>
-              <Button size="sm" onClick={openRegister}>{t("nav.join")}</Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/login">{t("nav.login")}</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/signup">{t("nav.joinParivar")}</Link>
+              </Button>
             </>
           )}
         </div>
@@ -115,10 +107,14 @@ export function HeaderClient({ session }: HeaderClientProps) {
                 ) : (
                   <>
                     <SheetClose asChild>
-                      <Button variant="outline" className="w-full" onClick={openLogin}>{t("nav.login")}</Button>
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link href="/login">{t("nav.login")}</Link>
+                      </Button>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Button className="w-full" onClick={openRegister}>{t("nav.joinParivar")}</Button>
+                      <Button className="w-full" asChild>
+                        <Link href="/signup">{t("nav.joinParivar")}</Link>
+                      </Button>
                     </SheetClose>
                   </>
                 )}
@@ -127,8 +123,6 @@ export function HeaderClient({ session }: HeaderClientProps) {
           </Sheet>
         </div>
       </div>
-
-      <AuthModal open={authOpen} onOpenChange={setAuthOpen} defaultTab={authTab} />
     </header>
   )
 }
@@ -138,7 +132,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
     <li>
       <Link
         href={href}
-        className="relative rounded-lg px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-maroon-light hover:text-maroon"
+        className="relative rounded-lg px-4 py-2 text-sm font-semibold text-foreground/90 transition hover:bg-cream-warm hover:text-maroon"
       >
         {children}
       </Link>

@@ -8,6 +8,7 @@ interface LangCtx {
   setLang: (l: Lang) => void
   toggle: () => void
   t: (key: DictKey, vars?: Record<string, string | number>) => string
+  animKey: number
 }
 
 const Ctx = createContext<LangCtx | null>(null)
@@ -22,6 +23,7 @@ function readInitialLang(): Lang {
 
 export function LanguageProvider({ children, initialLang = DEFAULT_LANG }: { children: ReactNode; initialLang?: Lang }) {
   const [lang, setLangState] = useState<Lang>(initialLang)
+  const [animKey, setAnimKey] = useState(0)
 
   // Sync from cookie on client mount (in case server passed a stale default)
   useEffect(() => {
@@ -39,10 +41,15 @@ export function LanguageProvider({ children, initialLang = DEFAULT_LANG }: { chi
   }, [lang])
 
   const setLang = useCallback((l: Lang) => {
+    if (l === lang) return
+    document.documentElement.classList.add("lang-switching")
     setLangState(l)
-    // Persist for 1 year so server components can read it next request
+    setAnimKey((k) => k + 1)
     document.cookie = `${LANG_COOKIE}=${l}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
-  }, [])
+    window.setTimeout(() => {
+      document.documentElement.classList.remove("lang-switching")
+    }, 320)
+  }, [lang])
 
   const toggle = useCallback(() => {
     setLang(lang === "en" ? "hi" : "en")
@@ -53,7 +60,7 @@ export function LanguageProvider({ children, initialLang = DEFAULT_LANG }: { chi
     [lang]
   )
 
-  return <Ctx.Provider value={{ lang, setLang, toggle, t }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ lang, setLang, toggle, t, animKey }}>{children}</Ctx.Provider>
 }
 
 export function useLang(): LangCtx {
@@ -65,6 +72,7 @@ export function useLang(): LangCtx {
       setLang: () => {},
       toggle: () => {},
       t: (key, vars) => translate(DEFAULT_LANG, key, vars),
+      animKey: 0,
     }
   }
   return ctx
