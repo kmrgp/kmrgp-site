@@ -2,6 +2,7 @@
 
 import { getSession } from "@/lib/auth/session"
 import { listApprovedProfiles, searchProfiles, type ProfileSearchFilters, type ProfileSearchResult } from "@/lib/services/profileService"
+import { recordProfileView } from "@/lib/services/profileViewService"
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string }
 
@@ -19,4 +20,15 @@ export async function searchProfilesAction(filters: ProfileSearchFilters): Promi
 
   const data = await searchProfiles(filters)
   return { success: true, data }
+}
+
+export async function recordProfileViewAction(
+  profileUserId: number
+): Promise<{ success: true } | { success: false; error: string }> {
+  const session = await getSession()
+  if (!session) return { success: false, error: "Not authenticated" }
+  if (profileUserId === session.id) return { success: true }
+
+  await recordProfileView(profileUserId, session.id)
+  return { success: true }
 }

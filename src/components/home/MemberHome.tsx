@@ -1,10 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { Search, User, Heart, Sparkles, Eye, ChevronRight, ShieldCheck } from "lucide-react"
+import { Search, User, Heart, ChevronRight, ShieldCheck } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useCountUp } from "@/lib/hooks/useCountUp"
+import { DashboardStatsCards } from "@/components/dashboard/DashboardStatsCards"
 import { useLang } from "@/lib/i18n/LanguageProvider"
 import { cn } from "@/lib/utils"
 import type { PublicProfile } from "@/types"
@@ -65,13 +65,7 @@ export function MemberHome({ username, profile, stats }: MemberHomeProps) {
           </Card>
         )}
 
-        <div className={`mb-6 grid gap-2 sm:mb-8 sm:gap-4 ${stats.profileViews > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
-          {stats.profileViews > 0 && (
-            <StatCard icon={Eye} value={stats.profileViews} label={t("dash.views")} />
-          )}
-          <StatCard icon={Heart} value={stats.interestsReceived} label={t("dash.interests")} />
-          <StatCard icon={Sparkles} value={stats.acceptedMatches} label={t("dash.newMatches")} />
-        </div>
+        <DashboardStatsCards stats={stats} className="mb-6 sm:mb-8" />
 
         <h2 className="mb-3 font-heading text-lg font-bold text-maroon sm:mb-4 sm:text-xl">{t("member.quickActions")}</h2>
         <div className="mb-8 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-2 lg:gap-4 xl:grid-cols-4">
@@ -118,23 +112,6 @@ export function MemberHome({ username, profile, stats }: MemberHomeProps) {
         </div>
       </div>
     </main>
-  )
-}
-
-function StatCard({ icon: Icon, value, label }: { icon: React.ElementType; value: number; label: string }) {
-  const { value: display, ref } = useCountUp(value)
-  return (
-    <Card className="min-w-0 overflow-hidden p-3 sm:p-5">
-      <div className="flex flex-col items-center gap-1.5 text-center lg:flex-row lg:gap-4 lg:text-left">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-saffron/10 text-saffron lg:h-11 lg:w-11">
-          <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
-        </div>
-        <div className="min-w-0">
-          <div ref={ref} className="font-heading text-lg font-bold text-maroon lg:text-2xl">{display}</div>
-          <div className="line-clamp-2 text-[10px] leading-tight text-muted-foreground lg:line-clamp-none lg:text-sm">{label}</div>
-        </div>
-      </div>
-    </Card>
   )
 }
 

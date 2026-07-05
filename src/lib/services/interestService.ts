@@ -172,7 +172,10 @@ export async function getAcceptedInterestsSent(senderId: number): Promise<Intere
 }
 
 export async function countReceivedInterests(receiverId: number): Promise<number> {
-  const rows = await db.select({ count: count() }).from(interests).where(eq(interests.receiverId, receiverId))
+  const rows = await db
+    .select({ count: count() })
+    .from(interests)
+    .where(and(eq(interests.receiverId, receiverId), ne(interests.status, "DECLINED")))
   return Number(rows[0].count)
 }
 
@@ -206,6 +209,10 @@ export async function countAcceptedMatches(userId: number): Promise<number> {
 }
 
 export async function sendInterest(senderId: number, receiverId: number): Promise<{ interest: Interest | undefined; alreadySent: boolean }> {
+  if (senderId === receiverId) {
+    return { interest: undefined, alreadySent: false }
+  }
+
   const [interest] = await db
     .insert(interests)
     .values({ senderId, receiverId })

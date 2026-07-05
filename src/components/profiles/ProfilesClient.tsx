@@ -13,7 +13,7 @@ import { ContactAdminDialog } from "./ContactAdminDialog"
 import { FilterSelect } from "@/components/ui/FilterSelect"
 import { SUGGESTED_DISTRICTS } from "@/lib/constants/districts"
 import { requestContactAction, getContactStatusesAction, getContactStatusAction } from "@/lib/actions/contactRequest"
-import { searchProfilesAction } from "@/lib/actions/profiles"
+import { searchProfilesAction, recordProfileViewAction } from "@/lib/actions/profiles"
 import { useLang } from "@/lib/i18n/LanguageProvider"
 import { resolveActionError } from "@/lib/i18n/actionErrors"
 import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
@@ -174,6 +174,13 @@ export function ProfilesClient({ initialProfiles, user, approvalStatus, initialT
 
   function openContactDialog(profile: PublicProfile, status: ContactRequestStatus, approvedContact: string | null = null) {
     setContactDialog({ open: true, profile, status, approvedContact })
+  }
+
+  function handleViewProfile(profile: PublicProfile) {
+    setSelected(profile)
+    if (user && user.id !== profile.userId) {
+      void recordProfileViewAction(profile.userId)
+    }
   }
 
   async function handleContact(profile: PublicProfile) {
@@ -392,7 +399,7 @@ export function ProfilesClient({ initialProfiles, user, approvalStatus, initialT
                     profile={profile}
                     isLoggedIn={!!user}
                     contactStatus={contactStatuses[profile.userId] ?? null}
-                    onView={() => setSelected(profile)}
+                    onView={() => handleViewProfile(profile)}
                     onContact={() => handleContact(profile)}
                   />
                 ))}

@@ -14,6 +14,8 @@
     "db:seed": "bun --env-file=.env.local src/scripts/seed.ts",
     "db:seed-images": "bun --env-file=.env.local src/scripts/uploadSeedImagesToR2.ts",
     "db:migrate-subscriptions": "bun --env-file=.env.local src/scripts/migrateSubscriptions.ts",
+    "db:ensure-views": "bun --env-file=.env.local src/scripts/ensureProfileViewsTable.ts",
+    "db:ensure-payment-unique": "bun --env-file=.env.local src/scripts/ensurePaymentOrdersUnique.ts",
     "db:reset": "bun src/scripts/reset.ts && bun src/scripts/seed.ts",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down"

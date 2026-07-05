@@ -325,6 +325,11 @@ export const dict = {
   "dash.navSuper": { en: "Super", hi: "सुपर" },
   "dash.browseMatches": { en: "Find Matches", hi: "जीवनसाथी खोजें" },
   "dash.accessOnly": { en: "Verified Access Only", hi: "केवल सत्यापित पहुँच" },
+  "dash.profileMissing": { en: "Profile not set up", hi: "प्रोफ़ाइल सेट नहीं है" },
+  "dash.profileMissingDesc": {
+    en: "Your account exists but has no bio-data yet. Complete registration to access your dashboard.",
+    hi: "आपका खाता है, पर बायो-डेटा नहीं। डैशबोर्ड के लिए पंजीकरण पूरा करें।",
+  },
   "dash.accessDesc": {
     en: "Log in or join the parivar to access your dashboard and verified profiles.",
     hi: "अपना डैशबोर्ड और सत्यापित प्रोफाइल देखने के लिए लॉगिन करें या परिवार से जुड़ें।",

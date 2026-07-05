@@ -242,6 +242,26 @@ export const profileSubscriptions = pgTable(
   })
 )
 
+/** Logged-in member opened another member's profile (unique viewer per profile). */
+export const profileViews = pgTable(
+  "profile_views",
+  {
+    id: serial("id").primaryKey(),
+    profileUserId: integer("profile_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    viewerId: integer("viewer_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    profileUserIdx: index("profile_views_profile_user_idx").on(table.profileUserId),
+    viewerIdx: index("profile_views_viewer_idx").on(table.viewerId),
+    uniqueView: uniqueIndex("profile_views_profile_viewer_idx").on(table.profileUserId, table.viewerId),
+  })
+)
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Profile = typeof profiles.$inferSelect
@@ -256,3 +276,5 @@ export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect
 export type NewSubscriptionPlan = typeof subscriptionPlans.$inferInsert
 export type PaymentOrder = typeof paymentOrders.$inferSelect
 export type ProfileSubscription = typeof profileSubscriptions.$inferSelect
+export type ProfileView = typeof profileViews.$inferSelect
+export type NewProfileView = typeof profileViews.$inferInsert

@@ -115,7 +115,7 @@ export function ProfileModal({
                 type="button"
                 onClick={() => src && setLightbox(true)}
                 className={cn("group relative w-full overflow-hidden rounded-2xl border-4 border-gold bg-cream-dark", src && "cursor-zoom-in")}
-                aria-label={`Zoom photo of ${profile.username}`}
+                aria-label={t("card.zoomPhoto", { name: profile.username ?? "" })}
               >
                 <SafeImage
                   src={src}
@@ -134,7 +134,7 @@ export function ProfileModal({
               <div className="min-w-0">
                 <h2 className="font-heading text-2xl font-bold text-maroon">{profile.username}</h2>
                 <div className="mb-4 flex flex-wrap gap-2">
-                  {profile.approvalStatus === "APPROVED" && (
+                  {profile.visible && profile.approvalStatus === "APPROVED" && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-maroon px-3 py-1 text-xs font-bold text-white">
                       <ShieldCheck className="h-3 w-3" /> {t("modal.verified")}
                     </span>
