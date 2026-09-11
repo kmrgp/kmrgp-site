@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Camera, Upload, X } from "lucide-react"
+import { Camera, Upload, X, CheckCircle2, ArrowLeft, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +18,7 @@ import { registerAction } from "@/lib/actions/auth"
 import {
   getRegistrationPlanAction,
   createRegistrationOrderAction,
-  verifyRegistrationPaymentAction,
+  completeRegistrationAction,
 } from "@/lib/actions/payment"
 import { loginAction } from "@/lib/actions/auth"
 import { useLang } from "@/lib/i18n/LanguageProvider"
@@ -34,11 +34,21 @@ import { scrollToFirstFieldError } from "@/lib/validation/scrollToFieldError"
 import type { DictKey } from "@/lib/i18n/dictionary"
 import { cn } from "@/lib/utils"
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type Step = "form" | "qr"
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export function SignupForm() {
   const { t, tEn } = useLang()
   const router = useRouter()
+
+  // ── Step state ────────────────────────────────────────────────────────────
+  const [step, setStep] = useState<Step>("form")
   const [pending, setPending] = useState(false)
 
+  // ── Form fields ───────────────────────────────────────────────────────────
   const [registerData, setRegisterData] = useState({
     username: "",
     phone: "",
@@ -55,7 +65,9 @@ export function SignupForm() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [errors, setErrors] = useState<SignupFieldErrors>({})
-  const fileRef = useRef<HTMLInputElement | null>(null)
+  const photoRef = useRef<HTMLInputElement | null>(null)
+
+  // ── Plan / QR state ───────────────────────────────────────────────────────
   const [regPlan, setRegPlan] = useState<{
     required: boolean
     amountInr?: number
@@ -64,6 +76,14 @@ export function SignupForm() {
   }>({ required: false })
   const [planReady, setPlanReady] = useState(false)
 
+  // ── QR step state ─────────────────────────────────────────────────────────
+  const [orderRef, setOrderRef] = useState<string | null>(null)
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null)
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
+  const [screenshotError, setScreenshotError] = useState<string | null>(null)
+  const screenshotRef = useRef<HTMLInputElement | null>(null)
+
+  // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
     getRegistrationPlanAction()
       .then((res) => {
@@ -87,6 +107,7 @@ export function SignupForm() {
     return d.toISOString().slice(0, 10)
   }, [])
 
+  // ── Helpers ───────────────────────────────────────────────────────────────
   function errMsg(key?: string) {
     return key ? t(key as DictKey) : undefined
   }
@@ -104,8 +125,9 @@ export function SignupForm() {
     return hasError ? "border-destructive focus:border-destructive focus:ring-red-100" : ""
   }
 
+  // ── Profile photo ─────────────────────────────────────────────────────────
   function openPhotoPicker() {
-    const input = fileRef.current
+    const input = photoRef.current
     if (!input) return
     input.value = ""
     input.click()
@@ -114,14 +136,8 @@ export function SignupForm() {
   function pickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith("image/")) {
-      toast.error(t("bio.uploadFailed"))
-      return
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error(t("bio.uploadFailed"))
-      return
-    }
+    if (!file.type.startsWith("image/")) { toast.error(t("bio.uploadFailed")); return }
+    if (file.size > 10 * 1024 * 1024) { toast.error(t("bio.uploadFailed")); return }
     setPhotoFile(file)
     setPhotoPreview(URL.createObjectURL(file))
     clearError("photo")
@@ -131,10 +147,42 @@ export function SignupForm() {
     setPhotoFile(null)
     if (photoPreview) URL.revokeObjectURL(photoPreview)
     setPhotoPreview(null)
-    if (fileRef.current) fileRef.current.value = ""
+    if (photoRef.current) photoRef.current.value = ""
     clearError("photo")
   }
 
+  // ── Screenshot ────────────────────────────────────────────────────────────
+  function openScreenshotPicker() {
+    const input = screenshotRef.current
+    if (!input) return
+    input.value = ""
+    input.click()
+  }
+
+  function pickScreenshot(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("errors.uploadInvalidType"))
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t("errors.uploadTooLarge"))
+      return
+    }
+    setScreenshotFile(file)
+    setScreenshotPreview(URL.createObjectURL(file))
+    setScreenshotError(null)
+  }
+
+  function clearScreenshot() {
+    setScreenshotFile(null)
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
+    setScreenshotPreview(null)
+    if (screenshotRef.current) screenshotRef.current.value = ""
+  }
+
+  // ── Post-registration: login + photo upload + redirect ────────────────────
   async function finishRegistration(phoneDigits: string, password: string) {
     const loginRes = await loginAction(phoneDigits, password)
     const loggedIn = loginRes.success
@@ -163,29 +211,12 @@ export function SignupForm() {
     router.refresh()
   }
 
-  function loadRazorpayScript(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (window.Razorpay) {
-        resolve()
-        return
-      }
-      const script = document.createElement("script")
-      script.src = "https://checkout.razorpay.com/v1/checkout.js"
-      script.onload = () => resolve()
-      script.onerror = () => reject(new Error("Could not load payment gateway"))
-      document.body.appendChild(script)
-    })
-  }
-
+  // ── Step 1: Form submit ───────────────────────────────────────────────────
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
 
     const district = normalizeDistrictInput(registerData.district)
-    const validation = validateSignupFields({
-      ...registerData,
-      district,
-      hasPhoto: !!photoFile,
-    })
+    const validation = validateSignupFields({ ...registerData, district, hasPhoto: !!photoFile })
 
     if (Object.keys(validation).length > 0) {
       setErrors(validation)
@@ -193,10 +224,7 @@ export function SignupForm() {
       return
     }
 
-    if (!planReady) {
-      toast.error(t("auth.planLoading"))
-      return
-    }
+    if (!planReady) { toast.error(t("auth.planLoading")); return }
 
     setErrors({})
     setPending(true)
@@ -210,6 +238,7 @@ export function SignupForm() {
       profileType: profileType as "GROOM" | "BRIDE",
     }
 
+    // ── Free registration path ──────────────────────────────────────────────
     if (!regPlan.required) {
       const res = await registerAction(payload)
       setPending(false)
@@ -221,60 +250,180 @@ export function SignupForm() {
       return
     }
 
+    // ── Paid path: create local order, then show QR step ───────────────────
     const orderRes = await createRegistrationOrderAction(payload)
+    setPending(false)
+
     if (!orderRes.success) {
-      setPending(false)
       toast.error(resolveActionError(orderRes.error, t))
       return
     }
 
-    try {
-      await loadRazorpayScript()
-    } catch {
-      setPending(false)
-      toast.error(t("auth.paymentFailed"))
-      return
-    }
-
-    const Razorpay = window.Razorpay
-    if (!Razorpay) {
-      toast.error(t("auth.paymentFailed"))
-      return
-    }
-
-    const rzp = new Razorpay({
-      key: orderRes.keyId,
-      amount: orderRes.amountPaise,
-      currency: "INR",
-      name: "Kshatriya Mewada Rajput Parivar",
-      description: orderRes.planName,
-      order_id: orderRes.orderId,
-      prefill: { name: registerData.username, contact: phoneDigits },
-      theme: { color: "#800020" },
-      handler: async (response) => {
-        setPending(true)
-        const verifyRes = await verifyRegistrationPaymentAction(
-          response.razorpay_order_id,
-          response.razorpay_payment_id,
-          response.razorpay_signature
-        )
-        setPending(false)
-        if (!verifyRes.success) {
-          toast.error(resolveActionError(verifyRes.error, t) || t("auth.paymentFailed"))
-          return
-        }
-        await finishRegistration(phoneDigits, registerData.password)
-      },
-      modal: {
-        ondismiss: () => {
-          setPending(false)
-          toast.info(t("auth.paymentCancelled"))
-        },
-      },
-    })
-    rzp.open()
+    setOrderRef(orderRes.orderRef)
+    setStep("qr")
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  // ── Step 2: Screenshot upload + complete registration ─────────────────────
+  async function handleScreenshotSubmit(e: React.FormEvent) {
+    e.preventDefault()
+
+    if (!screenshotFile) {
+      setScreenshotError(t("auth.err.screenshotRequired"))
+      return
+    }
+
+    if (!orderRef) {
+      toast.error(t("errors.generic"))
+      return
+    }
+
+    setPending(true)
+
+    // 1. Upload the screenshot
+    try {
+      const fd = new FormData()
+      fd.append("file", screenshotFile)
+      fd.append("orderRef", orderRef)
+
+      const uploadRes = await fetch("/api/payment/screenshot", { method: "POST", body: fd })
+      const uploadJson = await uploadRes.json()
+
+      if (!uploadRes.ok || !uploadJson.success) {
+        setPending(false)
+        toast.error(uploadJson.error || t("bio.uploadFailed"))
+        return
+      }
+    } catch {
+      setPending(false)
+      toast.error(t("bio.uploadFailed"))
+      return
+    }
+
+    // 2. Complete registration (creates user account)
+    const completeRes = await completeRegistrationAction(orderRef)
+    if (!completeRes.success) {
+      setPending(false)
+      toast.error(resolveActionError(completeRes.error, t))
+      return
+    }
+
+    // 3. Log in and redirect
+    await finishRegistration(registerData.phone, registerData.password)
+  }
+
+  // ─── QR Step UI ────────────────────────────────────────────────────────────
+  if (step === "qr") {
+    const amount = regPlan.amountInr ?? 501
+
+    return (
+      <AuthPageShell
+        wide
+        title={t("auth.qrTitle", { amount: String(amount) })}
+        description={t("auth.qrDesc", { amount: String(amount) })}
+        alternate={{ href: "/login", label: t("auth.switchToLogin") }}
+      >
+        <form onSubmit={handleScreenshotSubmit} noValidate className="grid w-full gap-5">
+
+          {/* Back button */}
+          <button
+            type="button"
+            onClick={() => { setStep("form"); clearScreenshot() }}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-maroon w-fit"
+          >
+            <ArrowLeft className="h-4 w-4" /> {t("auth.backToForm")}
+          </button>
+
+          {/* QR Code */}
+          <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-gold bg-cream-dark p-5">
+            <p className="text-center font-heading text-lg font-bold text-maroon">
+              {t("auth.qrTitle", { amount: String(amount) })}
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/QR-for_payment.jpeg"
+              alt="UPI Payment QR Code"
+              className="h-56 w-56 rounded-xl border-2 border-gold object-contain sm:h-64 sm:w-64"
+            />
+            <p className="text-center text-sm font-semibold text-amber-800">
+              ₹{amount} — {regPlan.planName}
+            </p>
+          </div>
+
+          {/* Screenshot upload */}
+          <div className="space-y-2">
+            <Label>
+              {t("auth.screenshotLabel")} <span className="text-saffron" aria-hidden="true">*</span>
+            </Label>
+            <p className="text-xs text-muted-foreground">{t("auth.screenshotHint")}</p>
+
+            <input
+              ref={screenshotRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={pickScreenshot}
+            />
+
+            {screenshotPreview ? (
+              <div
+                className={cn(
+                  "flex flex-col items-center gap-3 rounded-2xl border-2 bg-cream-dark p-4 sm:flex-row sm:items-center",
+                  screenshotError ? "border-destructive" : "border-gold-light"
+                )}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={screenshotPreview}
+                  alt="payment screenshot preview"
+                  className="h-24 w-24 shrink-0 rounded-xl border border-gold object-cover"
+                />
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                  <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={openScreenshotPicker}>
+                    <Camera className="mr-1 h-4 w-4" /> {t("auth.screenshotChange")}
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" className="w-full sm:w-auto" onClick={clearScreenshot}>
+                    <X className="mr-1 h-4 w-4" /> {t("auth.photoRemove")}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={openScreenshotPicker}
+                className={cn(
+                  "flex w-full cursor-pointer items-center justify-center gap-3 rounded-2xl border-2 border-dashed bg-cream-dark p-5 transition hover:bg-cream",
+                  screenshotError ? "border-destructive" : "border-gold"
+                )}
+              >
+                <ImageIcon className="h-5 w-5 shrink-0 text-gold" />
+                <span className="font-semibold text-muted-foreground">{t("auth.screenshotPick")}</span>
+              </button>
+            )}
+            {screenshotError && (
+              <p className="text-sm font-medium text-destructive">{screenshotError}</p>
+            )}
+          </div>
+
+          {/* Info note */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <CheckCircle2 className="mb-1 inline h-4 w-4 text-blue-600" />{" "}
+            {t("auth.paymentNote")}
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={pending}
+          >
+            {pending ? t("auth.completing") : t("auth.payAndRegister")}
+          </Button>
+        </form>
+      </AuthPageShell>
+    )
+  }
+
+  // ─── Step 1: Registration Form ─────────────────────────────────────────────
   return (
     <AuthPageShell
       wide
@@ -283,25 +432,19 @@ export function SignupForm() {
       alternate={{ href: "/login", label: t("auth.switchToLogin") }}
     >
       <form onSubmit={handleRegister} noValidate className="grid w-full min-w-0 gap-4">
+
+        {/* Profile photo */}
         <div className="min-w-0 space-y-2" data-form-field="photo">
           <Label>
             {t("auth.photo")} <span className="text-saffron" aria-hidden="true">*</span>
           </Label>
           <p className="text-xs text-muted-foreground">{t("auth.photoHint")}</p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={pickPhoto}
-          />
+          <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
           {photoPreview ? (
-            <div
-              className={cn(
-                "flex flex-col items-center gap-3 rounded-2xl border-2 bg-cream-dark p-4 sm:flex-row sm:items-center",
-                errors.photo ? "border-destructive" : "border-gold-light"
-              )}
-            >
+            <div className={cn(
+              "flex flex-col items-center gap-3 rounded-2xl border-2 bg-cream-dark p-4 sm:flex-row sm:items-center",
+              errors.photo ? "border-destructive" : "border-gold-light"
+            )}>
               <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-gold">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photoPreview} alt="preview" className="h-full w-full object-cover" />
@@ -331,16 +474,14 @@ export function SignupForm() {
           <FieldError message={errMsg(errors.photo)} />
         </div>
 
+        {/* Name + Gender */}
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
           <div className="min-w-0 space-y-2" data-form-field="username">
             <Label htmlFor="reg-name">{t("auth.fullName")}</Label>
             <Input
               id="reg-name"
               value={registerData.username}
-              onChange={(e) => {
-                setRegisterData({ ...registerData, username: e.target.value })
-                clearError("username")
-              }}
+              onChange={(e) => { setRegisterData({ ...registerData, username: e.target.value }); clearError("username") }}
               placeholder={tEn("auth.fullNamePh")}
               className={invalidInput(!!errors.username)}
               aria-invalid={!!errors.username}
@@ -349,13 +490,8 @@ export function SignupForm() {
           </div>
           <div className="min-w-0 space-y-2">
             <Label htmlFor="reg-gender">{t("auth.gender")}</Label>
-            <Select
-              value={registerData.gender}
-              onValueChange={(gender) => setRegisterData({ ...registerData, gender })}
-            >
-              <SelectTrigger id="reg-gender">
-                <SelectValue placeholder={tEn("auth.genderPh")} />
-              </SelectTrigger>
+            <Select value={registerData.gender} onValueChange={(gender) => setRegisterData({ ...registerData, gender })}>
+              <SelectTrigger id="reg-gender"><SelectValue placeholder={tEn("auth.genderPh")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Groom">{t("auth.groom")}</SelectItem>
                 <SelectItem value="Bride">{t("auth.bride")}</SelectItem>
@@ -364,16 +500,14 @@ export function SignupForm() {
           </div>
         </div>
 
+        {/* Gotra */}
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
           <div className="min-w-0 space-y-2" data-form-field="gotraSelf">
             <Label htmlFor="reg-gotra-self">{t("auth.gotraSelf")}</Label>
             <Input
               id="reg-gotra-self"
               value={registerData.gotraSelf}
-              onChange={(e) => {
-                setRegisterData({ ...registerData, gotraSelf: e.target.value })
-                clearError("gotraSelf")
-              }}
+              onChange={(e) => { setRegisterData({ ...registerData, gotraSelf: e.target.value }); clearError("gotraSelf") }}
               placeholder={tEn("auth.gotraSelfPh")}
               className={invalidInput(!!errors.gotraSelf)}
               aria-invalid={!!errors.gotraSelf}
@@ -385,10 +519,7 @@ export function SignupForm() {
             <Input
               id="reg-gotra-mother"
               value={registerData.gotraMother}
-              onChange={(e) => {
-                setRegisterData({ ...registerData, gotraMother: e.target.value })
-                clearError("gotraMother")
-              }}
+              onChange={(e) => { setRegisterData({ ...registerData, gotraMother: e.target.value }); clearError("gotraMother") }}
               placeholder={tEn("auth.gotraMotherPh")}
               className={invalidInput(!!errors.gotraMother)}
               aria-invalid={!!errors.gotraMother}
@@ -397,6 +528,7 @@ export function SignupForm() {
           </div>
         </div>
 
+        {/* DOB + District */}
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
           <div className="min-w-0 space-y-2" data-form-field="dob">
             <Label htmlFor="reg-dob">{t("auth.dob")}</Label>
@@ -405,10 +537,7 @@ export function SignupForm() {
               type="date"
               max={maxDob}
               value={registerData.dob}
-              onChange={(e) => {
-                setRegisterData({ ...registerData, dob: e.target.value })
-                clearError("dob")
-              }}
+              onChange={(e) => { setRegisterData({ ...registerData, dob: e.target.value }); clearError("dob") }}
               className={invalidInput(!!errors.dob)}
               aria-invalid={!!errors.dob}
             />
@@ -419,26 +548,21 @@ export function SignupForm() {
             <DistrictField
               id="reg-district"
               value={registerData.district}
-              onChange={(district) => {
-                setRegisterData({ ...registerData, district })
-                clearError("district")
-              }}
+              onChange={(district) => { setRegisterData({ ...registerData, district }); clearError("district") }}
               invalid={!!errors.district}
             />
             <FieldError message={errMsg(errors.district)} />
           </div>
         </div>
 
+        {/* Education + Profession */}
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
           <div className="min-w-0 space-y-2" data-form-field="education">
             <Label htmlFor="reg-education">{t("auth.education")}</Label>
             <Input
               id="reg-education"
               value={registerData.education}
-              onChange={(e) => {
-                setRegisterData({ ...registerData, education: e.target.value })
-                clearError("education")
-              }}
+              onChange={(e) => { setRegisterData({ ...registerData, education: e.target.value }); clearError("education") }}
               placeholder={tEn("auth.educationPh")}
               className={invalidInput(!!errors.education)}
               aria-invalid={!!errors.education}
@@ -450,10 +574,7 @@ export function SignupForm() {
             <Input
               id="reg-profession"
               value={registerData.profession}
-              onChange={(e) => {
-                setRegisterData({ ...registerData, profession: e.target.value })
-                clearError("profession")
-              }}
+              onChange={(e) => { setRegisterData({ ...registerData, profession: e.target.value }); clearError("profession") }}
               placeholder={tEn("auth.professionPh")}
               className={invalidInput(!!errors.profession)}
               aria-invalid={!!errors.profession}
@@ -462,21 +583,20 @@ export function SignupForm() {
           </div>
         </div>
 
+        {/* Phone */}
         <div className="min-w-0 space-y-2" data-form-field="phone">
           <Label htmlFor="reg-phone">{t("auth.mobile")}</Label>
           <PhoneInput
             id="reg-phone"
             value={registerData.phone}
-            onChange={(digits) => {
-              setRegisterData({ ...registerData, phone: digits })
-              clearError("phone")
-            }}
+            onChange={(digits) => { setRegisterData({ ...registerData, phone: digits }); clearError("phone") }}
             placeholder={tEn("auth.mobilePh")}
             invalid={!!errors.phone}
           />
           <FieldError message={errMsg(errors.phone)} />
         </div>
 
+        {/* Password */}
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
           <div className="min-w-0 space-y-2" data-form-field="password">
             <Label htmlFor="reg-password">{t("auth.setPassword")}</Label>
@@ -500,10 +620,7 @@ export function SignupForm() {
             <PasswordInput
               id="reg-confirm-password"
               value={registerData.confirmPassword}
-              onChange={(e) => {
-                setRegisterData({ ...registerData, confirmPassword: e.target.value })
-                clearError("confirmPassword")
-              }}
+              onChange={(e) => { setRegisterData({ ...registerData, confirmPassword: e.target.value }); clearError("confirmPassword") }}
               placeholder={tEn("auth.confirmPasswordPh")}
               autoComplete="new-password"
               className={invalidInput(!!errors.confirmPassword)}
@@ -513,15 +630,19 @@ export function SignupForm() {
           </div>
         </div>
 
+        {/* Payment notice */}
         {regPlan.required && regPlan.amountInr != null && (
           <div className="rounded-xl border border-saffron/40 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {t("auth.payToRegister", {
-              amount: `₹${regPlan.amountInr}`,
+            <p>{t("auth.payToRegister", {
+              amount: String(regPlan.amountInr),
               duration: String(regPlan.durationDays ?? 365),
-            })}
+            })}</p>
             {regPlan.planName && (
-              <span className="mt-1 block font-semibold">{regPlan.planName}</span>
+              <p className="mt-1 font-semibold">{regPlan.planName}</p>
             )}
+            <p className="mt-1 text-xs text-amber-700">
+              {t("auth.paymentNote")}
+            </p>
           </div>
         )}
 

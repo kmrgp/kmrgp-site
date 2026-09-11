@@ -197,21 +197,24 @@ export const paymentOrders = pgTable(
   "payment_orders",
   {
     id: serial("id").primaryKey(),
-    razorpayOrderId: varchar("razorpay_order_id", { length: 100 }).notNull().unique(),
+    /** Internal order reference — replaces the old Razorpay order ID. */
+    orderRef: varchar("order_ref", { length: 100 }).notNull().unique(),
     planId: integer("plan_id")
       .notNull()
       .references(() => subscriptionPlans.id),
     amountPaise: integer("amount_paise").notNull(),
     status: paymentOrderStatusEnum("status").notNull().default("PENDING"),
-    /** JSON blob of registration fields — consumed after successful payment. */
+    /** JSON blob of registration fields — consumed after admin approval. */
     registrationPayload: text("registration_payload").notNull(),
+    /** Path or URL of the UPI payment screenshot uploaded by the registrant. */
+    screenshotPath: varchar("screenshot_path", { length: 500 }),
     userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     paidAt: timestamp("paid_at", { withTimezone: true }),
   },
   (table) => ({
     statusIdx: index("payment_orders_status_idx").on(table.status),
-    razorpayIdx: index("payment_orders_razorpay_idx").on(table.razorpayOrderId),
+    orderRefIdx: index("payment_orders_order_ref_idx").on(table.orderRef),
   })
 )
 
@@ -228,7 +231,6 @@ export const profileSubscriptions = pgTable(
     paymentOrderId: integer("payment_order_id").references(() => paymentOrders.id, {
       onDelete: "set null",
     }),
-    razorpayPaymentId: varchar("razorpay_payment_id", { length: 100 }),
     status: subscriptionStatusEnum("status").notNull().default("ACTIVE"),
     amountPaidPaise: integer("amount_paid_paise").notNull(),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),

@@ -7,6 +7,7 @@ import { createSession, deleteSession, getSession } from "@/lib/auth/session"
 import type { ProfileType } from "@/types"
 import { isValidIndianMobile, normalizeIndianMobile } from "@/lib/validation/phone"
 
+
 export async function loginAction(phoneOrUsername: string, password: string) {
   const result = await authenticateUser(phoneOrUsername, password)
   if (!result.success) {
@@ -45,7 +46,7 @@ export async function registerAction(data: {
   if (paymentRequired) {
     return {
       success: false,
-      error: "Registration requires payment. Please complete checkout on the signup form.",
+      error: "Registration requires payment. Please complete the QR payment step on the signup form.",
     }
   }
 

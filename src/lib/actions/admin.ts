@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { getSession } from "@/lib/auth/session"
 import { approveUser, rejectUser, deleteUserAsAdmin, setProfilePublicDisplay, hideAllSeedProfiles } from "@/lib/services/adminService"
 import { listPendingProfiles, listRejectedProfiles, listAllProfiles, getPublicDisplayStats } from "@/lib/services/profileService"
+import { getPaymentOrderByUserId } from "@/lib/services/subscriptionService"
 
 export interface ApproveOptions {
   showPublic?: boolean
@@ -111,4 +112,27 @@ export async function getPublicDisplayStatsAction() {
   }
   const stats = await getPublicDisplayStats()
   return { success: true, stats }
+}
+
+export async function getPaymentScreenshotAction(userId: number) {
+  const session = await getSession()
+  if (!session || (session.role !== "ADMIN" && session.role !== "SUPER_ADMIN")) {
+    return { success: false as const, error: "Forbidden" }
+  }
+  const order = await getPaymentOrderByUserId(userId)
+  if (!order) return { success: true as const, screenshotUrl: null, orderRef: null }
+
+  let screenshotUrl: string | null = null
+  if (order.screenshotPath) {
+    const path = order.screenshotPath
+    screenshotUrl = path.startsWith("http") ? path : `/api/profile/image/${path}`
+  }
+
+  return {
+    success: true as const,
+    screenshotUrl,
+    orderRef: order.orderRef,
+    amountInr: Math.round(order.amountPaise / 100),
+    status: order.status,
+  }
 }

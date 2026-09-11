@@ -1,15 +1,18 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { getSession } from "@/lib/auth/session"
 import {
   createRegistrationPaymentOrder,
-  completeRegistrationPayment,
+  completeRegistrationAfterScreenshot,
   isSubscriptionRequired,
 } from "@/lib/services/subscriptionService"
 import type { RegistrationPayload } from "@/lib/services/subscriptionService"
-import { isRazorpayConfigured } from "@/lib/services/razorpayService"
+import { isValidIndianMobile, normalizeIndianMobile } from "@/lib/validation/phone"
 
+/**
+ * Returns whether a payment plan is active and what the fee is.
+ * Used by SignupForm on mount to decide whether to show the QR step.
+ */
 export async function getRegistrationPlanAction() {
   const { required, plan } = await isSubscriptionRequired()
   if (!required || !plan) {
@@ -25,23 +28,34 @@ export async function getRegistrationPlanAction() {
       amountInr: plan.amountInr,
       durationDays: plan.durationDays,
     },
-    razorpayConfigured: isRazorpayConfigured(),
   }
 }
 
+/**
+ * Creates a local payment order and returns the order reference.
+ * The frontend then shows the QR code and uses the orderRef when
+ * POSTing the screenshot to /api/payment/screenshot.
+ */
 export async function createRegistrationOrderAction(data: RegistrationPayload) {
-  if (!isRazorpayConfigured()) {
-    return { success: false as const, error: "Payment gateway is not configured." }
+  if (!data.phone?.trim() || !data.username?.trim() || !data.password || data.password.length < 6) {
+    return {
+      success: false as const,
+      error: "Please fill all required fields (password min 6 characters).",
+    }
   }
 
-  if (!data.phone?.trim() || !data.username?.trim() || !data.password || data.password.length < 6) {
-    return { success: false as const, error: "Please fill all required fields (password min 6 characters)." }
+  const phone = normalizeIndianMobile(data.phone)
+  if (!isValidIndianMobile(phone)) {
+    return {
+      success: false as const,
+      error: "A valid 10-digit Indian mobile number is required.",
+    }
   }
 
   try {
     return await createRegistrationPaymentOrder({
       ...data,
-      phone: data.phone.replace(/\D/g, ""),
+      phone,
       profileType: data.profileType,
     })
   } catch (e) {
@@ -52,17 +66,13 @@ export async function createRegistrationOrderAction(data: RegistrationPayload) {
   }
 }
 
-export async function verifyRegistrationPaymentAction(
-  razorpayOrderId: string,
-  razorpayPaymentId: string,
-  razorpaySignature: string
-) {
+/**
+ * Called after the screenshot has been uploaded via /api/payment/screenshot.
+ * Creates the user account so the registrant can log in immediately.
+ */
+export async function completeRegistrationAction(orderRef: string) {
   try {
-    const result = await completeRegistrationPayment(
-      razorpayOrderId,
-      razorpayPaymentId,
-      razorpaySignature
-    )
+    const result = await completeRegistrationAfterScreenshot(orderRef)
     if (result.success) {
       revalidatePath("/dashboard")
       revalidatePath("/profiles")
@@ -71,7 +81,7 @@ export async function verifyRegistrationPaymentAction(
   } catch (e) {
     return {
       success: false as const,
-      error: e instanceof Error ? e.message : "Payment verification failed.",
+      error: e instanceof Error ? e.message : "Registration completion failed.",
     }
   }
 }
