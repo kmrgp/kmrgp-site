@@ -118,11 +118,12 @@ export async function completeRegistrationAfterScreenshot(
   // Check for duplicate phone (e.g. user submitted twice).
   const existing = await getUserByPhone(raw.phone)
   if (existing) {
+    // Account already exists — link order to existing user and return success.
     await db
       .update(paymentOrders)
       .set({ status: "PAID", userId: existing.id, paidAt: new Date() })
       .where(eq(paymentOrders.id, order.id))
-    return { success: true, userId: existing.id }
+    return { success: true, userId: existing.id, alreadyPaid: true }
   }
 
   let userId: number
@@ -170,10 +171,12 @@ export async function completeRegistrationAfterScreenshot(
       .update(paymentOrders)
       .set({ status: "FAILED" })
       .where(eq(paymentOrders.id, order.id))
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Registration failed.",
+    // Surface a clean, recognisable message for duplicate phone violations.
+    const msg = err instanceof Error ? err.message : "Registration failed."
+    if (msg.toLowerCase().includes("unique") || msg.toLowerCase().includes("duplicate")) {
+      return { success: false, error: "Mobile number is already registered." }
     }
+    return { success: false, error: msg }
   }
 
   const now = new Date()

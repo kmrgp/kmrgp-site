@@ -1,4 +1,4 @@
-import { eq, and, ilike, or, desc, asc, sql, type SQL } from "drizzle-orm"
+import { eq, and, ilike, or, desc, asc, sql, isNull, type SQL } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { profiles, users, type Profile, type User } from "@/lib/db/schema"
 import { cacheDelete, cacheDeletePattern, cacheGet, cacheSet } from "@/lib/cache"
@@ -505,11 +505,18 @@ export async function listPendingProfiles(): Promise<PublicProfile[]> {
     .leftJoin(users, eq(profiles.userId, users.id))
     .where(
       and(
-        eq(profiles.approvalStatus, "PENDING"),
+        // Show both SENT (just registered) and PENDING (submitted for review)
+        // so admin can see all new registrations awaiting payment verification.
+        or(
+          eq(profiles.approvalStatus, "PENDING"),
+          eq(profiles.approvalStatus, "SENT")
+        ),
         eq(profiles.isSeed, false),
-        eq(users.role, "USER")
+        eq(users.role, "USER"),
+        isNull(users.deletedAt)
       )
     )
+    .orderBy(desc(profiles.createdAt))
 
   const result = rows.map(({ users: userRow, profiles: profile }) => toPublicProfile(userRow, profile))
   cacheSet(PENDING_PROFILES_KEY, result, 1000 * 60 * 2)
@@ -528,7 +535,8 @@ export async function listRejectedProfiles(): Promise<PublicProfile[]> {
       and(
         eq(profiles.approvalStatus, "REJECTED"),
         eq(profiles.isSeed, false),
-        eq(users.role, "USER")
+        eq(users.role, "USER"),
+        isNull(users.deletedAt)
       )
     )
 
@@ -548,7 +556,8 @@ export async function listAllProfiles(): Promise<PublicProfile[]> {
     .where(
       and(
         eq(profiles.isSeed, false),
-        eq(users.role, "USER")
+        eq(users.role, "USER"),
+        isNull(users.deletedAt)     // exclude soft-deleted users
       )
     )
     .orderBy(desc(profiles.createdAt))

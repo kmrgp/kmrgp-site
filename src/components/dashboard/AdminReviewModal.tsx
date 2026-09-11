@@ -286,7 +286,11 @@ export function AdminReviewModal({
 
           {(isPending || isRejected || isDraft) && (            <div className="space-y-3 rounded-xl border border-gold-light bg-white p-4">
               {isDraft && (
-                <p className="text-sm text-muted-foreground">{t("admin.draftHint")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {profile.isSeed
+                    ? t("admin.draftHint")
+                    : "This member just registered. Review their payment screenshot above and approve or reject."}
+                </p>
               )}
               <p className="text-sm font-semibold text-maroon">{t("admin.publicOnApprove")}</p>
               <label className="flex cursor-pointer items-start gap-3">

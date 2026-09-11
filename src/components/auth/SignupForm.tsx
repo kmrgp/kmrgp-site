@@ -184,26 +184,30 @@ export function SignupForm() {
 
   // ── Post-registration: login + photo upload + show success ───────────────
   async function finishRegistration(phoneDigits: string, password: string) {
-    const loginRes = await loginAction(phoneDigits, password)
-    const loggedIn = loginRes.success
+    let loggedIn = false
+    try {
+      const loginRes = await loginAction(phoneDigits, password)
+      loggedIn = loginRes.success
 
-    if (loggedIn && photoFile) {
-      const data = new FormData()
-      data.append("file", photoFile)
-      try {
-        const uploadRes = await fetch("/api/profile/upload", { method: "POST", body: data })
-        const uploadJson = await uploadRes.json()
-        if (!uploadRes.ok || !uploadJson.success) {
-          toast.error(resolveActionError(uploadJson.error, t) || t("bio.uploadFailed"))
+      if (loggedIn && photoFile) {
+        const data = new FormData()
+        data.append("file", photoFile)
+        try {
+          const uploadRes = await fetch("/api/profile/upload", { method: "POST", body: data })
+          const uploadJson = await uploadRes.json()
+          if (!uploadRes.ok || !uploadJson.success) {
+            toast.error(resolveActionError(uploadJson.error, t) || t("bio.uploadFailed"))
+          }
+        } catch {
+          // Photo upload failure is non-blocking — user can add photo from dashboard
         }
-      } catch {
-        toast.error(t("bio.uploadFailed"))
       }
+    } catch {
+      // Login failure is non-blocking — user can login manually from success screen
     }
-    clearPhoto()
 
-    // Always show the success step — whether login succeeded or not.
-    // If login failed the user can still navigate to /login from there.
+    clearPhoto()
+    // Always transition to success regardless of login outcome
     setPending(false)
     setStep("success")
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -300,8 +304,20 @@ export function SignupForm() {
     // 2. Complete registration (creates user account)
     const completeRes = await completeRegistrationAction(orderRef)
     if (!completeRes.success) {
+      // Special case: phone already registered means a previous attempt succeeded.
+      // Log them in and show the success screen rather than showing an error.
+      const alreadyRegistered =
+        completeRes.error?.toLowerCase().includes("already registered") ||
+        completeRes.error?.toLowerCase().includes("duplicate") ||
+        completeRes.error?.toLowerCase().includes("unique")
+
+      if (alreadyRegistered) {
+        await finishRegistration(registerData.phone, registerData.password)
+        return
+      }
+
       setPending(false)
-      toast.error(resolveActionError(completeRes.error, t))
+      toast.error(completeRes.error || t("errors.generic"), { duration: 6000 })
       return
     }
 
