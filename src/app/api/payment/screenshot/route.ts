@@ -53,9 +53,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 })
   }
 
-  if (order.status !== "PENDING") {
+  // Allow re-upload on PENDING or PAID orders (idempotent — user may retry
+  // after a network failure or page refresh). FAILED/EXPIRED orders are blocked.
+  if (order.status === "FAILED" || order.status === "EXPIRED") {
     return NextResponse.json(
-      { error: "This order has already been processed" },
+      { error: "This order has expired or failed. Please start registration again." },
       { status: 409 }
     )
   }

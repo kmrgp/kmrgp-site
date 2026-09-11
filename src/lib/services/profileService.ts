@@ -506,6 +506,7 @@ export async function listPendingProfiles(): Promise<PublicProfile[]> {
     .where(
       and(
         eq(profiles.approvalStatus, "PENDING"),
+        eq(profiles.isSeed, false),
         eq(users.role, "USER")
       )
     )
@@ -526,6 +527,7 @@ export async function listRejectedProfiles(): Promise<PublicProfile[]> {
     .where(
       and(
         eq(profiles.approvalStatus, "REJECTED"),
+        eq(profiles.isSeed, false),
         eq(users.role, "USER")
       )
     )
@@ -543,7 +545,12 @@ export async function listAllProfiles(): Promise<PublicProfile[]> {
     .select()
     .from(profiles)
     .leftJoin(users, eq(profiles.userId, users.id))
-    .where(eq(users.role, "USER"))
+    .where(
+      and(
+        eq(profiles.isSeed, false),
+        eq(users.role, "USER")
+      )
+    )
     .orderBy(desc(profiles.createdAt))
 
   const result = rows.map(({ users: userRow, profiles: profile }) => ({

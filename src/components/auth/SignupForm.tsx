@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Camera, Upload, X, CheckCircle2, ArrowLeft, ImageIcon } from "lucide-react"
+import { Camera, Upload, X, CheckCircle2, ArrowLeft, ImageIcon, PartyPopper, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Step = "form" | "qr"
+type Step = "form" | "qr" | "success"
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -182,7 +182,7 @@ export function SignupForm() {
     if (screenshotRef.current) screenshotRef.current.value = ""
   }
 
-  // ── Post-registration: login + photo upload + redirect ────────────────────
+  // ── Post-registration: login + photo upload + show success ───────────────
   async function finishRegistration(phoneDigits: string, password: string) {
     const loginRes = await loginAction(phoneDigits, password)
     const loggedIn = loginRes.success
@@ -202,13 +202,11 @@ export function SignupForm() {
     }
     clearPhoto()
 
-    if (loggedIn) {
-      toast.success(t("auth.regWelcome"), { id: "reg-welcome" })
-      router.push("/")
-    } else {
-      router.push("/login?registered=1")
-    }
-    router.refresh()
+    // Always show the success step — whether login succeeded or not.
+    // If login failed the user can still navigate to /login from there.
+    setPending(false)
+    setStep("success")
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   // ── Step 1: Form submit ───────────────────────────────────────────────────
@@ -249,7 +247,6 @@ export function SignupForm() {
       await finishRegistration(phoneDigits, registerData.password)
       return
     }
-
     // ── Paid path: create local order, then show QR step ───────────────────
     const orderRes = await createRegistrationOrderAction(payload)
     setPending(false)
@@ -308,8 +305,55 @@ export function SignupForm() {
       return
     }
 
-    // 3. Log in and redirect
+    // 3. Show success — login happens inside finishRegistration
     await finishRegistration(registerData.phone, registerData.password)
+  }
+
+  // ─── Success Step UI ────────────────────────────────────────────────────────
+  if (step === "success") {
+    return (
+      <AuthPageShell
+        wide
+        title={t("auth.success.title")}
+        description={t("auth.success.subtitle")}
+        alternate={{ href: "/login", label: t("auth.switchToLogin") }}
+      >
+        <div className="grid w-full gap-5">
+
+          {/* Big success icon */}
+          <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-green-200 bg-green-50 px-6 py-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+              <PartyPopper className="h-8 w-8 text-green-600" />
+            </div>
+            <h2 className="font-heading text-xl font-bold text-green-800">
+              {t("auth.success.title")}
+            </h2>
+            <p className="text-sm text-green-700">
+              {t("auth.success.body")}
+            </p>
+          </div>
+
+          {/* Steps checklist */}
+          <div className="space-y-3 rounded-xl border border-gold-light bg-cream-dark px-5 py-4">
+            <Step done label={t("auth.success.step1")} />
+            <Step done label={t("auth.success.step2")} />
+            <Step pending label={t("auth.success.step3")} />
+          </div>
+
+          {/* CTA */}
+          <Button
+            className="w-full"
+            onClick={() => { router.push("/dashboard"); router.refresh() }}
+          >
+            {t("auth.success.cta")}
+          </Button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            {t("auth.success.loginFirst")}
+          </p>
+        </div>
+      </AuthPageShell>
+    )
   }
 
   // ─── QR Step UI ────────────────────────────────────────────────────────────
@@ -657,5 +701,21 @@ export function SignupForm() {
         </Button>
       </form>
     </AuthPageShell>
+  )
+}
+
+// ─── Step indicator helper ────────────────────────────────────────────────────
+function Step({ done, pending, label }: { done?: boolean; pending?: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      {done ? (
+        <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+      ) : (
+        <Clock className="h-5 w-5 shrink-0 text-amber-500" />
+      )}
+      <span className={`text-sm font-medium ${done ? "text-green-800" : "text-amber-700"}`}>
+        {label}
+      </span>
+    </div>
   )
 }
