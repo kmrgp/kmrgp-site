@@ -519,7 +519,7 @@ export async function listPendingProfiles(): Promise<PublicProfile[]> {
     .orderBy(desc(profiles.createdAt))
 
   const result = rows.map(({ users: userRow, profiles: profile }) => toPublicProfile(userRow, profile))
-  cacheSet(PENDING_PROFILES_KEY, result, 1000 * 60 * 2)
+  cacheSet(PENDING_PROFILES_KEY, result, 1000 * 30)  // 30s — admin needs fresh data
   return result
 }
 
@@ -566,6 +566,6 @@ export async function listAllProfiles(): Promise<PublicProfile[]> {
     ...toPublicProfile(userRow, profile),
     age: estimateAge(profile.dob),
   }))
-  cacheSet(ALL_PROFILES_KEY, result, 1000 * 60 * 2)
+  cacheSet(ALL_PROFILES_KEY, result, 1000 * 30)  // 30s — admin needs fresh data
   return result
 }

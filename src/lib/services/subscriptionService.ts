@@ -13,7 +13,6 @@ import { getUserByPhone } from "./userService"
 import { getDefaultActivePlan, getPlanById } from "./subscriptionPlanService"
 import { cacheSet, cacheDeletePattern } from "@/lib/cache"
 import type { ProfileType } from "@/types"
-
 const USER_KEY = (id: number) => `user:${id}`
 const USER_PHONE_KEY = (phone: string) => `user:phone:${phone}`
 
@@ -150,6 +149,7 @@ export async function completeRegistrationAfterScreenshot(
     cacheSet(USER_KEY(userId), newUser)
     cacheSet(USER_PHONE_KEY(newUser.phone), newUser)
     cacheDeletePattern("stats:")
+    cacheDeletePattern("profiles:")  // flush pending/all lists so admin sees new registration immediately
 
     await db.insert(profiles).values({
       userId,
@@ -166,6 +166,9 @@ export async function completeRegistrationAfterScreenshot(
       community: raw.community ?? "Mewada",
       contact: raw.phone,
     })
+    // Bust again after the profile row is committed so a concurrent
+    // admin page load doesn't re-prime the cache with stale data.
+    cacheDeletePattern("profiles:")
   } catch (err) {
     await db
       .update(paymentOrders)
