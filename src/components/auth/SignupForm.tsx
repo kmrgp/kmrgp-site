@@ -343,7 +343,8 @@ export function SignupForm() {
             <img
               src="/images/QR-for_payment.jpeg"
               alt="UPI Payment QR Code"
-              className="h-56 w-56 rounded-xl border-2 border-gold object-contain sm:h-64 sm:w-64"
+              className="w-full max-w-xs rounded-xl border-2 border-gold object-contain sm:max-w-sm"
+              style={{ minHeight: "280px", objectFit: "contain" }}
             />
             <p className="text-center text-sm font-semibold text-amber-800">
               ₹{amount} — {regPlan.planName}
@@ -416,7 +417,7 @@ export function SignupForm() {
             className="w-full"
             disabled={pending}
           >
-            {pending ? t("auth.completing") : t("auth.payAndRegister")}
+            {pending ? t("auth.completing") : t("auth.submitScreenshot")}
           </Button>
         </form>
       </AuthPageShell>
@@ -652,7 +653,7 @@ export function SignupForm() {
             : pending
               ? t("auth.creating")
               : regPlan.required
-                ? t("auth.payAndRegister")
+                ? t("auth.payAndRegister", { amount: String(regPlan.amountInr ?? 501) })
                 : t("auth.register")}
         </Button>
       </form>
