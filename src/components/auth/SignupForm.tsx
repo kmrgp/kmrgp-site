@@ -343,8 +343,7 @@ export function SignupForm() {
             <img
               src="/images/QR-for_payment.jpeg"
               alt="UPI Payment QR Code"
-              className="w-full max-w-xs rounded-xl border-2 border-gold object-contain sm:max-w-sm"
-              style={{ minHeight: "280px", objectFit: "contain" }}
+              className="h-56 w-56 rounded-xl border-2 border-gold object-contain sm:h-64 sm:w-64"
             />
             <p className="text-center text-sm font-semibold text-amber-800">
               ₹{amount} — {regPlan.planName}
