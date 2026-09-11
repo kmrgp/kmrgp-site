@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { SafeImage } from "@/components/ui/safe-image"
 import { PhotoLightbox } from "@/components/ui/PhotoLightbox"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { translateProfileType, translateCommunity, displayValue } from "@/lib/i18n/profileValues"
 import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
 import type { PublicProfile } from "@/types"
 
@@ -19,7 +20,7 @@ interface ProfileCardProps {
 }
 
 export function ProfileCard({ profile, isLoggedIn, contactStatus = null, onView, onContact }: ProfileCardProps) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [lightbox, setLightbox] = useState(false)
   const src = profile.imageUrl ?? null
 
@@ -54,7 +55,7 @@ export function ProfileCard({ profile, isLoggedIn, contactStatus = null, onView,
               <ZoomIn className="h-4 w-4" />
             </div>
             <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-saffron px-2.5 py-1 text-[10px] font-bold text-white sm:px-3 sm:text-xs">
-              {profile.type === "GROOM" ? t("profiles.groom") : t("profiles.bride")}
+              {translateProfileType(profile.type, lang)}
             </div>
             {profile.visible && profile.approvalStatus === "APPROVED" && (
               <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-maroon px-2.5 py-1 text-[10px] font-bold text-white sm:px-3 sm:text-xs">
@@ -72,7 +73,7 @@ export function ProfileCard({ profile, isLoggedIn, contactStatus = null, onView,
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
             <div className="absolute left-3 top-3 rounded-full bg-saffron px-2.5 py-1 text-[10px] font-bold text-white sm:px-3 sm:text-xs">
-              {profile.type === "GROOM" ? t("profiles.groom") : t("profiles.bride")}
+              {translateProfileType(profile.type, lang)}
             </div>
           </div>
         )}
@@ -80,14 +81,14 @@ export function ProfileCard({ profile, isLoggedIn, contactStatus = null, onView,
           <h3 className="mb-2 truncate font-heading text-lg font-bold text-maroon sm:text-xl">{profile.username}</h3>
           <div className="mb-3 flex flex-wrap gap-1.5 sm:gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-cream-dark px-2 py-1 text-[10px] font-semibold text-maroon sm:text-xs">
-              <Calendar className="h-3 w-3 shrink-0" /> {profile.age ?? "-"} {t("profiles.yrs")}
+              <Calendar className="h-3 w-3 shrink-0" /> {profile.age ?? "-"} {t("profile.yrs")}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-cream-dark px-2 py-1 text-[10px] font-semibold text-maroon sm:text-xs">
-              <Ruler className="h-3 w-3 shrink-0" /> {profile.height}
+              <Ruler className="h-3 w-3 shrink-0" /> {displayValue(profile.height)}
             </span>
             <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-cream-dark px-2 py-1 text-[10px] font-semibold text-maroon sm:text-xs">
               <MapPin className="h-3 w-3 shrink-0" />
-              <span className="truncate">{profile.district}</span>
+              <span className="truncate">{displayValue(profile.district)}</span>
             </span>
           </div>
 
@@ -95,15 +96,15 @@ export function ProfileCard({ profile, isLoggedIn, contactStatus = null, onView,
             <tbody>
               <tr>
                 <td className="py-0.5 font-semibold text-maroon">{t("card.education")}</td>
-                <td className="py-0.5 text-right text-muted-foreground [overflow-wrap:anywhere]">{profile.education}</td>
+                <td className="py-0.5 text-right text-muted-foreground [overflow-wrap:anywhere]">{displayValue(profile.education)}</td>
               </tr>
               <tr>
                 <td className="py-0.5 font-semibold text-maroon">{t("card.profession")}</td>
-                <td className="py-0.5 text-right text-muted-foreground [overflow-wrap:anywhere]">{profile.profession}</td>
+                <td className="py-0.5 text-right text-muted-foreground [overflow-wrap:anywhere]">{displayValue(profile.profession)}</td>
               </tr>
               <tr>
                 <td className="py-0.5 font-semibold text-maroon">{t("card.community")}</td>
-                <td className="py-0.5 text-right text-muted-foreground">{profile.community}</td>
+                <td className="py-0.5 text-right text-muted-foreground">{translateCommunity(profile.community, lang)}</td>
               </tr>
             </tbody>
           </table>

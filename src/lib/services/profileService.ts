@@ -126,9 +126,11 @@ export async function searchProfiles(filters: ProfileSearchFilters): Promise<Pro
   const offset = (page - 1) * pageSize
 
   // Admin/super-admin accounts are never listed as matrimonial profiles.
+  // Seed profiles are never shown to the public — only real approved members.
   const conditions: SQL[] = [
     eq(profiles.visible, true),
     eq(profiles.approvalStatus, "APPROVED"),
+    eq(profiles.isSeed, false),
     eq(users.role, "USER"),
   ]
 
@@ -427,6 +429,7 @@ export async function listApprovedProfiles(): Promise<PublicProfile[]> {
       and(
         eq(profiles.visible, true),
         eq(profiles.approvalStatus, "APPROVED"),
+        eq(profiles.isSeed, false),
         eq(users.role, "USER")
       )
     )
@@ -439,7 +442,7 @@ export async function listApprovedProfiles(): Promise<PublicProfile[]> {
   return result
 }
 
-/** Home-page featured section — admin-picked first, then real profiles, then seed. */
+/** Home-page featured section — only real (non-seed) approved profiles with images. */
 export async function listFeaturedProfiles(limit = 3): Promise<PublicProfile[]> {
   const cached = cacheGet<PublicProfile[]>(FEATURED_PROFILES_KEY)
   if (cached) return cached.slice(0, limit)
@@ -447,9 +450,11 @@ export async function listFeaturedProfiles(limit = 3): Promise<PublicProfile[]> 
   const baseWhere = and(
     eq(profiles.visible, true),
     eq(profiles.approvalStatus, "APPROVED"),
+    eq(profiles.isSeed, false),   // never show seed profiles on home page
     eq(users.role, "USER")
   )
 
+  // Admin-featured real profiles first
   const featuredRows = await db
     .select()
     .from(profiles)
@@ -469,12 +474,13 @@ export async function listFeaturedProfiles(limit = 3): Promise<PublicProfile[]> 
     return picked.slice(0, limit)
   }
 
+  // Backfill with non-featured real profiles that have a photo
   const fillerRows = await db
     .select()
     .from(profiles)
     .leftJoin(users, eq(profiles.userId, users.id))
     .where(and(baseWhere, eq(profiles.featured, false)))
-    .orderBy(asc(profiles.isSeed), desc(profiles.updatedAt))
+    .orderBy(desc(profiles.updatedAt))
 
   const seen = new Set(picked.map((p) => p.userId))
   const filler = fillerRows
@@ -482,9 +488,9 @@ export async function listFeaturedProfiles(limit = 3): Promise<PublicProfile[]> 
       ...toPublicProfile(userRow, profile),
       age: estimateAge(profile.dob),
     }))
-    .filter((p) => !seen.has(p.userId))
+    .filter((p) => !seen.has(p.userId) && p.imageUrl)
 
-  const result = [...picked, ...filler].filter((p) => p.imageUrl).slice(0, limit)
+  const result = [...picked, ...filler].slice(0, limit)
   cacheSet(FEATURED_PROFILES_KEY, result, 1000 * 60 * 2)
   return result
 }

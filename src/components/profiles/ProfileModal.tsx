@@ -10,6 +10,7 @@ import { PhotoLightbox } from "@/components/ui/PhotoLightbox"
 import { getContactStatusAction, requestContactAction } from "@/lib/actions/contactRequest"
 import { useLang } from "@/lib/i18n/LanguageProvider"
 import { resolveActionError } from "@/lib/i18n/actionErrors"
+import { translateProfileType, translateCommunity, translateFamilyType, displayValue } from "@/lib/i18n/profileValues"
 import { cn } from "@/lib/utils"
 import type { ContactRequestStatus } from "@/lib/services/contactRequestService"
 import type { PublicProfile } from "@/types"
@@ -37,7 +38,7 @@ export function ProfileModal({
   onContactStatusChange,
   onOpenContactDialog,
 }: ProfileModalProps) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [lightbox, setLightbox] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const [localStatus, setLocalStatus] = useState<ContactRequestStatus>(contactStatus)
@@ -140,28 +141,28 @@ export function ProfileModal({
                     </span>
                   )}
                   <span className="rounded-full bg-cream-dark px-3 py-1 text-xs font-bold text-maroon">
-                    {profile.type === "GROOM" ? t("profiles.groom") : t("profiles.bride")}
+                    {translateProfileType(profile.type, lang)}
                   </span>
-                  <span className="rounded-full bg-cream-dark px-3 py-1 text-xs font-bold text-maroon">{profile.community}</span>
+                  <span className="rounded-full bg-cream-dark px-3 py-1 text-xs font-bold text-maroon">{translateCommunity(profile.community, lang)}</span>
                 </div>
 
                 <table className="w-full text-sm">
                   <tbody className="divide-y divide-gold-light">
-                    <Row label={t("modal.ageHeight")} value={`${profile.age ?? "-"} yrs, ${profile.height}`} />
-                    <Row label={t("card.education")} value={profile.education} />
-                    <Row label={t("card.profession")} value={profile.profession} />
-                    <Row label={t("profiles.district")} value={profile.district} />
+                    <Row label={t("modal.ageHeight")} value={`${profile.age ?? "-"} ${t("profile.yrs")}, ${displayValue(profile.height)}`} />
+                    <Row label={t("card.education")} value={displayValue(profile.education)} />
+                    <Row label={t("card.profession")} value={displayValue(profile.profession)} />
+                    <Row label={t("profiles.district")} value={displayValue(profile.district)} />
                     {isLoggedIn ? (
                       <>
-                        <Row label={t("modal.gotraSelf")} value={profile.gotraSelf} />
-                        <Row label={t("modal.gotraMother")} value={profile.gotraMother} />
-                        <Row label={t("modal.father")} value={profile.fatherName} />
-                        <Row label={t("modal.mother")} value={profile.motherName} />
-                        <Row label={t("modal.familyType")} value={profile.familyType} />
-                        <Row label={t("modal.brothers")} value={profile.brothers} />
-                        <Row label={t("modal.sisters")} value={profile.sisters} />
-                        <Row label={t("modal.parentsOcc")} value={profile.parentsOccupation} />
-                        <Row label={t("modal.address")} value={profile.address} />
+                        <Row label={t("modal.gotraSelf")} value={displayValue(profile.gotraSelf)} />
+                        <Row label={t("modal.gotraMother")} value={displayValue(profile.gotraMother)} />
+                        <Row label={t("modal.father")} value={displayValue(profile.fatherName)} />
+                        <Row label={t("modal.mother")} value={displayValue(profile.motherName)} />
+                        <Row label={t("modal.familyType")} value={translateFamilyType(profile.familyType, lang)} />
+                        <Row label={t("modal.brothers")} value={displayValue(profile.brothers)} />
+                        <Row label={t("modal.sisters")} value={displayValue(profile.sisters)} />
+                        <Row label={t("modal.parentsOcc")} value={displayValue(profile.parentsOccupation)} />
+                        <Row label={t("modal.address")} value={displayValue(profile.address)} />
                       </>
                     ) : (
                       <tr>
@@ -236,7 +237,7 @@ function Row({ label, value }: { label: string; value: string | null }) {
   return (
     <tr>
       <td className="py-2 pr-2 font-semibold text-maroon">{label}</td>
-      <td className="py-2 text-right text-muted-foreground [overflow-wrap:anywhere]">{value || "-"}</td>
+      <td className="py-2 text-right text-muted-foreground [overflow-wrap:anywhere]">{value && value !== "—" ? value : "—"}</td>
     </tr>
   )
 }

@@ -623,7 +623,22 @@ export const dict = {
   "super.created": { en: "Admin created", hi: "एडमिन बनाया गया" },
   "super.demoted": { en: "Admin demoted", hi: "एडमिन पदावनत किया गया" },
 
-  // ---- Footer ----
+  // ---- Profile field values (translatable enum-like values) ----
+  // These are values entered via dropdowns/selects in the bio editor — not free text.
+  "profile.type.groom": { en: "Groom", hi: "वर" },
+  "profile.type.bride": { en: "Bride", hi: "वधू" },
+  "profile.familyType.joint": { en: "Joint Family", hi: "संयुक्त परिवार" },
+  "profile.familyType.nuclear": { en: "Nuclear Family", hi: "एकल परिवार" },
+  "profile.community.mewada": { en: "Mewada", hi: "मेवाड़ा" },
+  "profile.community.rajput": { en: "Rajput", hi: "राजपूत" },
+  "profile.gender.male": { en: "Male", hi: "पुरुष" },
+  "profile.gender.female": { en: "Female", hi: "महिला" },
+  "profile.yrs": { en: "yrs", hi: "वर्ष" },
+  "profile.noData": { en: "—", hi: "—" },
+  "profile.userDataNote": {
+    en: "Profile details are shown as entered by the member.",
+    hi: "प्रोफाइल विवरण सदस्य द्वारा दर्ज किए अनुसार दिखाए गए हैं।",
+  },
   "footer.about": { en: "A dedicated family matrimony portal preserving heritage and building relationships based on values, trust, and tradition.", hi: "एक समर्पित परिवार वैवाहिक पोर्टल जो विरासत को संजोता एवं मूल्यों, विश्वास एवं परंपरा के आधार पर रिश्ते बनाता है।" },
   "footer.quickLinks": { en: "Quick Links", hi: "त्वरित लिंक" },
   "footer.support": { en: "Support", hi: "सहायता" },

@@ -10,6 +10,7 @@ import { SafeImage } from "@/components/ui/safe-image"
 import { PhotoLightbox } from "@/components/ui/PhotoLightbox"
 import { useCountUp } from "@/lib/hooks/useCountUp"
 import { useLang } from "@/lib/i18n/LanguageProvider"
+import { translateProfileType, displayValue } from "@/lib/i18n/profileValues"
 import type { PublicProfile } from "@/types"
 
 interface HomeClientProps {
@@ -31,7 +32,7 @@ const VALUES = [
 ]
 
 export function HomeClient({ featured }: HomeClientProps) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [lightbox, setLightbox] = useState<{ src: string; name?: string } | null>(null)
 
   const openLightbox = (src: string | null | undefined, name?: string) => {
@@ -145,7 +146,8 @@ export function HomeClient({ featured }: HomeClientProps) {
         </div>
       </section>
 
-      {/* Featured profiles */}
+      {/* Featured profiles — only shown when real approved profiles exist */}
+      {featured.length > 0 && (
       <section className="py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
@@ -174,16 +176,26 @@ export function HomeClient({ featured }: HomeClientProps) {
                     natural
                     sizes="33vw"
                   />
-                  <div className="absolute left-3 top-3 rounded-full bg-saffron px-3 py-1 text-xs font-bold text-white">{profile.type}</div>
+                  <div className="absolute left-3 top-3 rounded-full bg-saffron px-3 py-1 text-xs font-bold text-white">
+                    {translateProfileType(profile.type, lang)}
+                  </div>
                   <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-maroon px-3 py-1 text-xs font-bold text-white">
                     <ShieldCheck className="h-3 w-3" /> {t("modal.verified")}
                   </div>
                 </button>
                 <CardContent className="p-5">
                   <h3 className="type-h3 mb-2">{profile.username}</h3>
-                  <p className="type-body-sm mb-1 text-muted-foreground">{profile.age} yrs • {profile.height}</p>
-                  <p className="type-body-sm mb-1"><span className="font-semibold text-maroon">{t("modal.gotraSelf")}:</span> {profile.gotraSelf}</p>
-                  <p className="type-body-sm mb-4"><span className="font-semibold text-maroon">{t("card.education")}:</span> {profile.education}</p>
+                  <p className="type-body-sm mb-1 text-muted-foreground">
+                    {profile.age} {t("profile.yrs")} • {displayValue(profile.height)}
+                  </p>
+                  <p className="type-body-sm mb-1">
+                    <span className="font-semibold text-maroon">{t("modal.gotraSelf")}:</span>{" "}
+                    {displayValue(profile.gotraSelf)}
+                  </p>
+                  <p className="type-body-sm mb-4">
+                    <span className="font-semibold text-maroon">{t("card.education")}:</span>{" "}
+                    {displayValue(profile.education)}
+                  </p>
                   <Button asChild variant="outline" className="w-full">
                     <Link href="/profiles">{t("home.viewDetails")}</Link>
                   </Button>
@@ -193,6 +205,7 @@ export function HomeClient({ featured }: HomeClientProps) {
           </div>
         </div>
       </section>
+      )}
 
       {/* Values */}
       <section className="bg-gradient-to-br from-saffron to-maroon py-16 text-white">
