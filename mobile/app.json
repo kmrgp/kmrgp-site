@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Kshatriya Mewada Rajput",
+    "slug": "kmrgp-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "kmrgp",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#7B1C1C"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.kmrgp.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#7B1C1C"
+      },
+      "package": "com.kmrgp.mobile"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow KMRGP to access your photos to upload your profile picture and payment screenshots.",
+          "cameraPermission": "Allow KMRGP to use your camera to take photos."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
