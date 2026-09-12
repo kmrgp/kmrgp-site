@@ -2,13 +2,13 @@
  * Centralized API client for the KMRGP mobile app.
  *
  * - Reads the base URL from EXPO_PUBLIC_API_URL
- * - Attaches Bearer token from SecureStore on every authenticated request
+ * - Attaches Bearer token from AsyncStorage on every authenticated request
  * - Parses the standard { success, data, error } envelope
  * - Throws ApiCallError on HTTP errors so callers can catch cleanly
  * - Never logs or exposes secrets
  */
 
-import * as SecureStore from "expo-secure-store"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import Constants from "expo-constants"
 import type { ApiResponse } from "@/types"
 
@@ -17,7 +17,7 @@ import type { ApiResponse } from "@/types"
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ??
   Constants.expoConfig?.extra?.apiUrl ??
-  "http://localhost:4024/api/v1"
+  "https://kmrgp.com/api/v1"
 
 const TOKEN_KEY = "kmrgp_auth_token"
 const TIMEOUT_MS = 15_000
@@ -25,15 +25,15 @@ const TIMEOUT_MS = 15_000
 // ─── Token storage ────────────────────────────────────────────────────────────
 
 export async function saveToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, token)
+  await AsyncStorage.setItem(TOKEN_KEY, token)
 }
 
 export async function getToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(TOKEN_KEY)
+  return AsyncStorage.getItem(TOKEN_KEY)
 }
 
 export async function clearToken(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY)
+  await AsyncStorage.removeItem(TOKEN_KEY)
 }
 
 // ─── Error class ─────────────────────────────────────────────────────────────
