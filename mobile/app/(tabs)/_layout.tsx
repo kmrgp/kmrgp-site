@@ -9,6 +9,8 @@ export default function TabLayout() {
   if (loading) return null
   if (!user) return <Redirect href="/login" />
 
+  const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN"
+
   return (
     <Tabs
       screenOptions={{
@@ -53,6 +55,17 @@ export default function TabLayout() {
           title: "Profile",
           tabBarIcon: ({ color }: { color: ColorValue }) => <TabIcon emoji="👤" />,
         }}
+      />
+      <Tabs.Screen
+        name="admin"
+        options={
+          isAdmin
+            ? {
+                title: "Admin",
+                tabBarIcon: ({ color }: { color: ColorValue }) => <TabIcon emoji="🛡️" />,
+              }
+            : { href: null }
+        }
       />
     </Tabs>
   )
