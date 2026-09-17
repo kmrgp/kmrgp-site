@@ -97,10 +97,10 @@ export default function ProfileScreen() {
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaType.IMAGE,
       quality: 0.85,
       allowsEditing: true,
-      aspect: [1, 1],
+      aspect: [1, 1] as [number, number],
     })
     if (result.canceled || !result.assets?.[0]) return
 
