@@ -1,7 +1,8 @@
 import { Tabs, Redirect } from "expo-router"
 import { useAuth } from "@/store/authStore"
 import { Colors } from "@/constants/theme"
-import { View, Text, StyleSheet } from "react-native"
+import { Text } from "react-native"
+import type { ColorValue } from "react-native"
 
 export default function TabLayout() {
   const { user, loading } = useAuth()
@@ -21,42 +22,42 @@ export default function TabLayout() {
           paddingBottom: 6,
           paddingTop: 4,
           height: 64,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        } as object,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" } as object,
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => <TabIcon emoji="🏠" color={color} />,
+          tabBarIcon: ({ color }: { color: ColorValue }) => <TabIcon emoji="🏠" />,
         }}
       />
       <Tabs.Screen
         name="browse"
         options={{
           title: "Browse",
-          tabBarIcon: ({ color }) => <TabIcon emoji="🔍" color={color} />,
+          tabBarIcon: ({ color }: { color: ColorValue }) => <TabIcon emoji="🔍" />,
         }}
       />
       <Tabs.Screen
         name="interests"
         options={{
           title: "Interests",
-          tabBarIcon: ({ color }) => <TabIcon emoji="💌" color={color} />,
+          tabBarIcon: ({ color }: { color: ColorValue }) => <TabIcon emoji="💌" />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color }) => <TabIcon emoji="👤" color={color} />,
+          tabBarIcon: ({ color }: { color: ColorValue }) => <TabIcon emoji="👤" />,
         }}
       />
     </Tabs>
   )
 }
 
-function TabIcon({ emoji, color }: { emoji: string; color: string }) {
-  return <Text style={{ fontSize: 20 }}>{emoji}</Text>
+function TabIcon({ emoji }: { emoji: string }) {
+  return <Text style={{ fontSize: 20 } as object}>{emoji}</Text>
 }

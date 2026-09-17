@@ -3,15 +3,12 @@
     "name": "Kshatriya Mewada Rajput",
     "slug": "kmrgp-mobile",
     "version": "1.0.0",
+    "sdkVersion": "57.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "kmrgp",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#7B1C1C"
-    },
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kmrgp.mobile"
