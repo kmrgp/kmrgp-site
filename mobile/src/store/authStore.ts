@@ -1,11 +1,9 @@
 /**
  * Auth store — persists login state across app restarts.
- * Uses React state + SecureStore (token) + AsyncStorage (user object).
- *
- * Pattern: no external state library needed. A module-level store with
- * a listener pattern keeps screens in sync.
+ * Uses AsyncStorage for both token and user object (Expo Go compatible).
  */
 
+import { useState, useEffect } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { saveToken, clearToken, getToken } from "@/api/client"
 import { getMe } from "@/api/auth"
@@ -43,16 +41,25 @@ export async function initAuth(): Promise<void> {
       _user = null
       return
     }
-    // Verify token is still valid by fetching fresh user from server
+    // Show cached user immediately while we verify with server
     const cached = await AsyncStorage.getItem(USER_KEY)
-    if (cached) _user = JSON.parse(cached) as AuthUser
-
+    if (cached) {
+      try {
+        _user = JSON.parse(cached) as AuthUser
+        notify()
+      } catch {
+        // ignore bad cache
+      }
+    }
+    // Verify token is still valid
     const fresh = await getMe()
     _user = fresh
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(fresh))
   } catch {
-    // Token expired or network error — clear session
-    await signOut()
+    // Token expired or no network — use cached user if available, else sign out
+    if (!_user) {
+      await signOut()
+    }
   } finally {
     _loading = false
     notify()
@@ -75,14 +82,13 @@ export async function signOut(): Promise<void> {
   notify()
 }
 
-/** React hook — subscribes to auth changes */
-import { useState, useEffect } from "react"
+// ─── React hook ───────────────────────────────────────────────────────────────
 
 export function useAuth(): { user: AuthUser | null; loading: boolean } {
   const [state, setState] = useState(getAuthState)
 
   useEffect(() => {
-    const unsub = subscribe(() => setState(getAuthState()))
+    const unsub = subscribe(() => setState({ ...getAuthState() }))
     return unsub
   }, [])
 
