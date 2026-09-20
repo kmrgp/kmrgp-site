@@ -190,7 +190,7 @@ function QRPaymentStep({
 
   async function pickScreenshot() {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.IMAGE,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
     })
     if (!result.canceled && result.assets?.[0]) {

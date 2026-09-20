@@ -144,7 +144,7 @@ export default function ProfileScreen() {
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.IMAGE,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.85, allowsEditing: true, aspect: [1, 1] as [number, number],
     })
     if (result.canceled || !result.assets?.[0]) return
@@ -169,7 +169,7 @@ export default function ProfileScreen() {
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.IMAGE,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.9,
     })
     if (result.canceled || !result.assets?.[0]) return

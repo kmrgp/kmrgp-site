@@ -35,7 +35,7 @@ export default function PaymentStatusScreen() {
     if (!perm.granted) return
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.IMAGE,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.85,
     })
     if (result.canceled || !result.assets?.[0]) return
