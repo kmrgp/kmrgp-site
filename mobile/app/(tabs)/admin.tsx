@@ -77,15 +77,8 @@ export default function AdminScreen() {
   const [actionLoading, setActionLoading] = useState(false)
   const [msg, setMsg] = useState<{ text: string; isError: boolean } | null>(null)
 
-  if (!isAdmin) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.forbidden}>🚫 Admin access only</Text>
-      </View>
-    )
-  }
-
-  async function load(t: AdminTab = tab) {
+  // loadData is defined before hooks so useEffect/useCallback can reference it
+  const loadData = useCallback(async (t: AdminTab) => {
     try {
       if (t === "contacts") {
         const data = await fetchContactRequests()
@@ -97,18 +90,28 @@ export default function AdminScreen() {
     } catch (err) {
       setMsg({ text: err instanceof ApiCallError ? err.message : "Load failed", isError: true })
     }
-  }
+  }, [])
 
   useEffect(() => {
+    if (!isAdmin) return
     setLoading(true)
-    load(tab).finally(() => setLoading(false))
-  }, [tab])
+    loadData(tab).finally(() => setLoading(false))
+  }, [tab, isAdmin, loadData])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    await load(tab)
+    await loadData(tab)
     setRefreshing(false)
-  }, [tab])
+  }, [tab, loadData])
+
+  // ── Guard: only render admin UI if user has the role ──────────────────────
+  if (!isAdmin) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.forbidden as object}>🚫 Admin access only</Text>
+      </View>
+    )
+  }
 
   async function openProfile(profile: PublicProfile) {
     setSelectedProfile(profile)
@@ -138,7 +141,7 @@ export default function AdminScreen() {
               await approveMember(userId, true)
               setMsg({ text: `${username ?? "Member"} approved.`, isError: false })
               setSelectedProfile(null)
-              await load(tab)
+              await loadData(tab)
             } catch (err) {
               setMsg({ text: err instanceof ApiCallError ? err.message : "Failed", isError: true })
             } finally { setActionLoading(false) }
@@ -162,7 +165,7 @@ export default function AdminScreen() {
               await rejectMember(userId)
               setMsg({ text: `${username ?? "Member"} rejected.`, isError: false })
               setSelectedProfile(null)
-              await load(tab)
+              await loadData(tab)
             } catch (err) {
               setMsg({ text: err instanceof ApiCallError ? err.message : "Failed", isError: true })
             } finally { setActionLoading(false) }
@@ -186,7 +189,7 @@ export default function AdminScreen() {
               await deleteMember(userId)
               setMsg({ text: `${username ?? "Member"} deleted.`, isError: false })
               setSelectedProfile(null)
-              await load(tab)
+              await loadData(tab)
             } catch (err) {
               setMsg({ text: err instanceof ApiCallError ? err.message : "Failed", isError: true })
             } finally { setActionLoading(false) }
@@ -201,7 +204,7 @@ export default function AdminScreen() {
     try {
       await resolveContactRequest(requestId, action)
       setMsg({ text: `Contact request ${action.toLowerCase()}d.`, isError: false })
-      await load("contacts")
+      await loadData("contacts")
     } catch (err) {
       setMsg({ text: err instanceof ApiCallError ? err.message : "Failed", isError: true })
     } finally { setActionLoading(false) }

@@ -74,7 +74,7 @@ export interface InterestWithProfile {
   gotraSelf: string | null
   gotraMother: string | null
   district: string | null
-  contact: null
+  contact: string | null
   status: InterestStatus
   createdAt: string
 }

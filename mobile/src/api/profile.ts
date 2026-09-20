@@ -59,17 +59,44 @@ export async function uploadPaymentScreenshot(
   mimeType: string,
   orderRef: string
 ): Promise<{ screenshotUrl: string }> {
-  const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4024/api/v1"
-  // The payment screenshot endpoint is at the OLD /api/payment/screenshot path (no v1)
-  // and doesn't require auth. We build the URL manually.
-  const uploadUrl = BASE_URL.replace("/api/v1", "") + "/api/payment/screenshot"
+  // This endpoint lives at /api/payment/screenshot (outside /api/v1/).
+  // It does NOT require an auth token — the user is not yet registered.
+  // Authentication is the orderRef tied to their registration session.
+  const baseWithoutV1 = (process.env.EXPO_PUBLIC_API_URL ?? "https://kmrgp.com/api/v1")
+    .replace(/\/api\/v1\/?$/, "")
+  const uploadUrl = `${baseWithoutV1}/api/payment/screenshot`
 
   const formData = new FormData()
   formData.append("file", { uri: imageUri, type: mimeType, name: "payment.jpg" } as unknown as Blob)
   formData.append("orderRef", orderRef)
 
-  const response = await fetch(uploadUrl, { method: "POST", body: formData })
-  const json = await response.json()
-  if (!json.success) throw new Error(json.error ?? "Upload failed")
-  return json
+  let response: Response
+  try {
+    response = await fetch(uploadUrl, { method: "POST", body: formData })
+  } catch {
+    throw new Error("Network error uploading screenshot. Check your connection.")
+  }
+
+  let json: { success: boolean; data?: { screenshotUrl: string }; screenshotUrl?: string; error?: string }
+  try {
+    json = await response.json()
+  } catch {
+    throw new Error("Unexpected server response during screenshot upload.")
+  }
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error ?? "Screenshot upload failed. Please try again.")
+  }
+
+  // Handle both the v1 envelope { success, data: { screenshotUrl } }
+  // and the legacy direct format { success, screenshotUrl }
+  const screenshotUrl = json.data?.screenshotUrl ?? json.screenshotUrl ?? ""
+  return { screenshotUrl }
+}
+
+export async function uploadCastCertificate(fileUri: string, mimeType: string): Promise<{ fileUrl: string }> {
+  const formData = new FormData()
+  formData.append("file", { uri: fileUri, type: mimeType, name: "cast.pdf" } as unknown as Blob)
+  formData.append("kind", "cast")
+  return api.upload("/profile/upload", formData)
 }
